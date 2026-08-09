@@ -21,6 +21,7 @@ import { evolutionConfig, instanciaTenant } from "./whatsapp/evolution.js";
 import { featuresDoTenant, garantirWhatsapp, podeUsarWhatsapp } from "./whatsapp/tenant.js";
 
 const slugSchema = z.string().min(2).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use apenas letras minúsculas, números e hífens.");
+const SLUGS_RESERVADOS = new Set(["master", "admin", "api", "cliente", "assets", "ops"]);
 const midiaSchema = z.string().max(500).optional().nullable().or(z.literal(""));
 
 const criarTenantSchema = z.object({
@@ -224,6 +225,9 @@ master.get("/tenants", async (_req, res) => {
 
 master.post("/tenants", async (req, res) => {
   const dados = criarTenantSchema.parse(req.body);
+  if (SLUGS_RESERVADOS.has(dados.slug)) {
+    return res.status(400).json({ erro: "Este identificador (slug) é reservado pelo sistema." });
+  }
   const [slugLivre] = await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, dados.slug)).limit(1);
   if (slugLivre) return res.status(409).json({ erro: "Este identificador (slug) já está em uso." });
 
@@ -274,7 +278,7 @@ master.post("/tenants", async (req, res) => {
     loginHint: {
       slug: criado.tenant.slug,
       email: criado.admin.email,
-      adminUrl: "/admin",
+      adminUrl: `/${criado.tenant.slug}/admin`,
       publicUrl: `/${criado.tenant.slug}`,
     },
   });

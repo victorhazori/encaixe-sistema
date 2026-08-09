@@ -385,8 +385,11 @@
   white-space: nowrap;
 }
 
+.publico-booking .calendario-grade {
+  grid-auto-rows: 2.5rem;
+}
+
 .publico-booking .dia {
-  max-height: 2.75rem;
   border-radius: 12px;
 }
 
@@ -649,13 +652,16 @@
     padding: .75rem;
   }
 
-  .publico-booking .calendario-semana,
-  .publico-booking .calendario-grade {
+  .publico-booking .calendario-semana {
     gap: .2rem;
   }
 
+  .publico-booking .calendario-grade {
+    gap: .2rem;
+    grid-auto-rows: 2.35rem;
+  }
+
   .publico-booking .dia {
-    max-height: 2.5rem;
     font-size: .78rem;
     border-radius: 8px;
   }

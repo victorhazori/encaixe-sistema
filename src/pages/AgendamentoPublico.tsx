@@ -195,7 +195,7 @@ export function AgendamentoPublico() {
               </button>
             </>
           ) : (
-            <Link to={`/cliente/${slug}`} className="link-sutil">Entrar</Link>
+            <Link to={`/${slug}/cliente`} className="link-sutil">Entrar</Link>
           )}
           <a href="#agendar" className="botao-cabecalho">Agendar</a>
         </div>

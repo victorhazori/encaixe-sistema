@@ -13,7 +13,7 @@
 WHATSAPP_PROVIDER=console
 ```
 
-Use **Simulador de chat** no `/admin`.
+Use **Simulador de chat** no painel da loja (`/{slug}/admin` → WhatsApp).
 
 ## Produção (Evolution multi-tenant)
 

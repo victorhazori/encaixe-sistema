@@ -179,7 +179,7 @@ async function executarSeed() {
     });
   }
 
-  console.log("Seed concluído. Acesse /barbearia-demo ou use admin@demo.encaixe / Demo@1234.");
+  console.log("Seed concluído. Público: /barbearia-demo · Admin: /barbearia-demo/admin · admin@demo.encaixe / Demo@1234");
 }
 
 executarSeed()

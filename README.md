@@ -41,7 +41,8 @@ Endereços:
 
 - Painel mestre (suas contas): `http://localhost:5173/master`
 - Reserva demo: `http://localhost:5173/barbearia-demo`
-- Painel do negócio: `http://localhost:5173/admin`
+- Painel do negócio: `http://localhost:5173/barbearia-demo/admin`
+- Área do cliente: `http://localhost:5173/barbearia-demo/cliente`
 - API: `http://localhost:5000/api/health`
 
 No `/master` você gerencia **Negócios**, **Planos** (Basic / Pro / Enterprise), **WhatsApp** (bot + Evolution + simulador) e **Configurações**.
@@ -57,7 +58,7 @@ Credenciais da conta demo (seed):
 - Senha: `Demo@1234`
 - Identificador: `barbearia-demo`
 
-No `/master` você cria quantos negócios quiser. Cada um ganha slug próprio (`/nome-do-negocio`), admin próprio e painel `/admin` para alterar nome, fotos, clientes, serviços e agenda.
+No `/master` você cria quantos negócios quiser. Cada um ganha slug próprio (`/nome-do-negocio`), página pública em `/{slug}`, painel em `/{slug}/admin` e área do cliente em `/{slug}/cliente`.
 
 ## Scripts
 

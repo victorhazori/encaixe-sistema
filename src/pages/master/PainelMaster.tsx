@@ -154,7 +154,7 @@ export function PainelMaster() {
           seedDefaults: true,
         }),
       }, token);
-      setOk(`Conta criada: /${novo.loginHint.slug} · admin ${novo.loginHint.email}`);
+      setOk(`Conta criada: /${novo.loginHint.slug} · painel /${novo.loginHint.slug}/admin · ${novo.loginHint.email}`);
       evento.currentTarget.reset();
       setMostrarForm(false);
       await carregar();
@@ -199,7 +199,7 @@ export function PainelMaster() {
     localStorage.setItem("encaixe_admin", sessao.token);
     localStorage.setItem("encaixe_tenant", JSON.stringify(sessao.tenant));
     localStorage.setItem("encaixe_master_view", "1");
-    window.location.href = "/admin";
+    window.location.href = `/${sessao.tenant.slug}/admin`;
   }
 
   async function salvarPlano(plano: Plano, evento: FormEvent<HTMLFormElement>) {
@@ -376,6 +376,7 @@ export function PainelMaster() {
                   </label>
                   <div className="master-tenant-actions">
                     <a href={`/${item.slug}`} target="_blank" rel="noreferrer" className="admin-btn admin-btn--ghost"><ExternalLink size={14} /> Público</a>
+                    <a href={`/${item.slug}/admin`} target="_blank" rel="noreferrer" className="admin-btn admin-btn--ghost"><ExternalLink size={14} /> Admin</a>
                     <button type="button" className="admin-btn admin-btn--primary" onClick={() => entrarNoNegocio(item)}><Store size={14} /> Suporte</button>
                     <button type="button" className="admin-btn admin-btn--ghost" onClick={() => resetSenha(item)}><KeyRound size={14} /></button>
                     <button type="button" className="admin-btn admin-btn--ghost" onClick={() => alternarAtivo(item)}><Power size={14} /></button>

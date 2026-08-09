@@ -6,11 +6,16 @@ import { api, type Tenant } from "../../lib/api";
 import { aplicarCorMarca, useTenantTheme } from "../../lib/theme";
 import "../../styles/admin.css";
 
-export function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Tenant) => void }) {
+export function LoginAdmin({
+  slugFixo,
+  aoEntrar,
+}: {
+  slugFixo: string;
+  aoEntrar: (token: string, tenant: Tenant) => void;
+}) {
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
-  const [slug, setSlug] = useState("barbearia-demo");
-  const tenantTema = useTenantTheme(slug);
+  const tenantTema = useTenantTheme(slugFixo);
   const corMarca = tenantTema?.primaryColor ?? "var(--cor-marca)";
 
   async function entrar(evento: FormEvent<HTMLFormElement>) {
@@ -22,11 +27,14 @@ export function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Ten
       const resultado = await api<{ token: string; tenant: Tenant }>("/auth/staff/login", {
         method: "POST",
         body: JSON.stringify({
-          slug: form.get("slug"),
+          slug: slugFixo,
           email: form.get("email"),
           password: form.get("password"),
         }),
       });
+      if (resultado.tenant.slug !== slugFixo) {
+        throw new Error("Este login não pertence a este estabelecimento.");
+      }
       aplicarCorMarca(resultado.tenant.primaryColor);
       aoEntrar(resultado.token, resultado.tenant);
     } catch (e) {
@@ -60,18 +68,13 @@ export function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Ten
         <form className="admin-login__card" onSubmit={entrar}>
           <span className="sobretitulo">Painel administrativo</span>
           <h2>Boas-vindas</h2>
-          <p>Entre com o identificador e as credenciais da equipe.</p>
+          <p>
+            Entre na conta de <strong>/{slugFixo}</strong>.
+          </p>
 
           <label>
             Identificador do negócio
-            <input
-              name="slug"
-              value={slug}
-              required
-              autoComplete="organization"
-              onChange={(e) => setSlug(e.target.value.trim())}
-              onBlur={(e) => setSlug(e.target.value.trim() || "barbearia-demo")}
-            />
+            <input name="slug" value={slugFixo} readOnly autoComplete="organization" />
           </label>
           <label>
             E-mail
@@ -91,7 +94,7 @@ export function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Ten
 
           <p className="admin-login__hint">
             <Building2 size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-            A cor da marca acompanha o identificador informado.
+            URL do painel: /{slugFixo}/admin
           </p>
         </form>
       </div>

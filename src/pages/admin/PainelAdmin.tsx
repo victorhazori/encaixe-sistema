@@ -17,6 +17,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { Navigate, useParams } from "react-router";
 import { TemaToggle } from "../../components/TemaToggle";
 import { Marca } from "../../components/ui";
 import { type Tenant } from "../../lib/api";
@@ -113,6 +114,7 @@ function grupoDaSecao(secao: Secao) {
 }
 
 export function PainelAdmin() {
+  const { slug: slugUrl = "" } = useParams();
   const [token, setToken] = useState(() => localStorage.getItem("encaixe_admin") ?? "");
   const [tenant, setTenant] = useState<Tenant | undefined>(() => {
     const salvo = localStorage.getItem("encaixe_tenant");
@@ -129,6 +131,14 @@ export function PainelAdmin() {
     if (!activeGroupId) return;
     setOpenGroups((prev) => (prev[activeGroupId] === undefined ? { ...prev, [activeGroupId]: true } : prev));
   }, [activeGroupId]);
+
+  // Sessão de outra loja → manda para o /{slug}/admin correto
+  useEffect(() => {
+    if (!token || !tenant?.slug || !slugUrl) return;
+    if (tenant.slug !== slugUrl) {
+      window.location.replace(`/${tenant.slug}/admin`);
+    }
+  }, [token, tenant?.slug, slugUrl]);
 
   function entrar(novoToken: string, novoTenant: Tenant) {
     localStorage.setItem("encaixe_admin", novoToken);
@@ -177,9 +187,15 @@ export function PainelAdmin() {
     setMenu(false);
   }
 
-  useTenantTheme(tenant?.slug, tenant?.primaryColor);
+  useTenantTheme(tenant?.slug ?? slugUrl, tenant?.primaryColor);
 
-  if (!token || !tenant) return <LoginAdmin aoEntrar={entrar} />;
+  if (!slugUrl) return <Navigate to="/master" replace />;
+
+  if (!token || !tenant) return <LoginAdmin slugFixo={slugUrl} aoEntrar={entrar} />;
+
+  if (tenant.slug !== slugUrl) {
+    return <main className="centro">Redirecionando para /{tenant.slug}/admin…</main>;
+  }
 
   const abaConfig: AbaConfig =
     secao === "config-horarios" ? "horarios" : secao === "config-bloqueios" ? "bloqueios" : "identidade";
