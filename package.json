@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,api -c yellow,cyan \"vite\" \"npm:dev:server\"",
+    "dev": "concurrently -k -n api,web -c cyan,yellow \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:web": "wait-on tcp:5000 && vite",
     "dev:server": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
     "start": "tsx server/index.ts",
@@ -40,6 +41,7 @@
     "drizzle-kit": "latest",
     "tsx": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "wait-on": "latest"
   }
 }
