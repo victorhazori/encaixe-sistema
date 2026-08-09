@@ -3,8 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#121617" />
+    <meta name="theme-color" content="#f3f5f7" />
     <meta name="description" content="Encaixe — agendamentos simples para negócios que valorizam o tempo." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+    <script>
+      (function () {
+        try {
+          var salvo = localStorage.getItem("encaixe_tema");
+          var modo = salvo === "light" || salvo === "dark"
+            ? salvo
+            : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.dataset.theme = modo;
+        } catch (e) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
     <title>Encaixe</title>
   </head>
   <body>

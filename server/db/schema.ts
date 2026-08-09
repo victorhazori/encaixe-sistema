@@ -28,6 +28,7 @@ export const plans = pgTable("plans", {
   slug: varchar("slug", { length: 80 }).notNull().unique(),
   priceCents: integer("price_cents").notNull().default(0),
   limits: jsonb("limits").notNull().default({}),
+  features: jsonb("features").$type<Record<string, boolean>>().notNull().default({}),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -40,9 +41,47 @@ export const tenants = pgTable("tenants", {
   phone: varchar("phone", { length: 30 }),
   address: text("address"),
   logoUrl: text("logo_url"),
+  heroImageUrl: text("hero_image_url"),
+  galleryUrls: jsonb("gallery_urls").$type<string[]>().notNull().default([]),
   primaryColor: varchar("primary_color", { length: 16 }).notNull().default("#d99442"),
   timezone: varchar("timezone", { length: 60 }).notNull().default("America/Sao_Paulo"),
   active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const tenantWhatsapp = pgTable("tenant_whatsapp", {
+  tenantId: integer("tenant_id").primaryKey().references(() => tenants.id, { onDelete: "cascade" }),
+  /** Master libera o módulo; a loja ativa o bot e configura o restante. */
+  authorized: boolean("authorized").notNull().default(false),
+  enabled: boolean("enabled").notNull().default(false),
+  phone: varchar("phone", { length: 30 }),
+  welcomeMessage: text("welcome_message"),
+  handoffMessage: text("handoff_message"),
+  mode: varchar("mode", { length: 20 }).notNull().default("rules"),
+  evolutionInstance: varchar("evolution_instance", { length: 120 }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const waSessions = pgTable(
+  "wa_sessions",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    phone: varchar("phone", { length: 30 }).notNull(),
+    state: varchar("state", { length: 60 }).notNull().default("idle"),
+    draft: jsonb("draft").notNull().default({}),
+    handoff: boolean("handoff").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("wa_sessions_tenant_phone_idx").on(table.tenantId, table.phone)],
+);
+
+export const waMessageLog = pgTable("wa_message_log", {
+  id: serial("id").primaryKey(),
+  tenantId: integer("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  phone: varchar("phone", { length: 30 }).notNull(),
+  direction: varchar("direction", { length: 10 }).notNull(),
+  body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

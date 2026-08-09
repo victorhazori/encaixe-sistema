@@ -109,3 +109,4 @@ fi
 
 log "Concluído. Site: https://${DOMINIO}"
 log "SSL: sudo certbot --nginx -d ${DOMINIO}"
+log "WhatsApp (Evolution multi-tenant, porta 8081): sudo bash scripts/install-whatsapp.sh"

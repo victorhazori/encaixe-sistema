@@ -18,6 +18,9 @@ import {
   users,
   workingHours,
 } from "./db/schema.js";
+import { master } from "./master.js";
+import { montarWhatsappAdmin } from "./whatsapp/adminRoutes.js";
+import { handleEvolutionWebhook } from "./whatsapp/webhook.js";
 
 const app = express();
 app.use(cors());
@@ -166,7 +169,7 @@ function tentarSessaoCliente(req: Request): Sessao | undefined {
     return z.object({
       userId: z.number(),
       tenantId: z.number(),
-      role: z.enum(["admin", "staff", "customer"]),
+      role: z.enum(["admin", "staff", "customer", "platform"]),
     }).parse(jwt.verify(token, segredo));
   } catch {
     return undefined;
@@ -250,6 +253,8 @@ app.get("/api/public/:slug", async (req, res) => {
     phone: tenant.phone,
     address: tenant.address,
     logoUrl: tenant.logoUrl,
+    heroImageUrl: tenant.heroImageUrl,
+    galleryUrls: tenant.galleryUrls ?? [],
     primaryColor: tenant.primaryColor,
   });
 });
@@ -623,17 +628,31 @@ admin.delete("/blocks/:id", async (req, res) => {
 });
 
 admin.put("/branding", async (req, res) => {
+  const midia = z.string().max(500).optional().nullable().or(z.literal(""));
   const dados = z.object({
     name: z.string().min(2).optional(),
     phone: z.string().optional().nullable(),
     address: z.string().optional().nullable(),
-    logoUrl: z.string().url().optional().nullable(),
+    logoUrl: midia,
+    heroImageUrl: midia,
+    galleryUrls: z.array(z.string().max(500)).max(6).optional(),
     primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   }).parse(req.body);
-  const [tenant] = await db.update(tenants).set(dados).where(eq(tenants.id, req.tenantId!)).returning();
+  const patch = {
+    ...dados,
+    ...(dados.logoUrl !== undefined ? { logoUrl: dados.logoUrl || null } : {}),
+    ...(dados.heroImageUrl !== undefined ? { heroImageUrl: dados.heroImageUrl || null } : {}),
+  };
+  const [tenant] = await db.update(tenants).set(patch).where(eq(tenants.id, req.tenantId!)).returning();
   res.json(tenant);
 });
+
+montarWhatsappAdmin(admin);
 app.use("/api/admin", admin);
+app.use("/api/master", master);
+
+/** Entrada de mensagens WhatsApp (Evolution) — multi-tenant por nome da instância. */
+app.post("/api/webhooks/evolution", handleEvolutionWebhook);
 
 const cliente = express.Router();
 cliente.use(autenticar(["customer"]));

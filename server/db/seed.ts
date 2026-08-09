@@ -18,11 +18,71 @@ async function executarSeed() {
     throw new Error("DATABASE_URL não definida. Use pglite no .env ou um PostgreSQL.");
   }
 
-  const [plano] = await db
+  const [planoBasic] = await db
     .insert(plans)
-    .values({ name: "Basic", slug: "basic", priceCents: 4900, limits: { professionals: 5 } })
-    .onConflictDoUpdate({ target: plans.slug, set: { name: "Basic", active: true } })
+    .values({
+      name: "Basic",
+      slug: "basic",
+      priceCents: 4900,
+      limits: { professionals: 3, appointmentsMonth: 200 },
+      features: {
+        whatsapp_bot: false,
+        whatsapp_ai: false,
+        reminders: true,
+        multi_professional: true,
+        custom_branding: true,
+      },
+    })
+    .onConflictDoUpdate({
+      target: plans.slug,
+      set: {
+        name: "Basic",
+        active: true,
+        limits: { professionals: 3, appointmentsMonth: 200 },
+        features: {
+          whatsapp_bot: false,
+          whatsapp_ai: false,
+          reminders: true,
+          multi_professional: true,
+          custom_branding: true,
+        },
+      },
+    })
     .returning();
+
+  await db.insert(plans).values([
+    {
+      name: "Pro",
+      slug: "pro",
+      priceCents: 9900,
+      limits: { professionals: 10, appointmentsMonth: 1000 },
+      features: {
+        whatsapp_bot: true,
+        whatsapp_ai: false,
+        reminders: true,
+        multi_professional: true,
+        custom_branding: true,
+      },
+    },
+    {
+      name: "Enterprise",
+      slug: "enterprise",
+      priceCents: 19900,
+      limits: { professionals: 50, appointmentsMonth: null },
+      features: {
+        whatsapp_bot: true,
+        whatsapp_ai: true,
+        reminders: true,
+        multi_professional: true,
+        custom_branding: true,
+      },
+    },
+  ]).onConflictDoUpdate({
+    target: plans.slug,
+    set: { active: true },
+  });
+
+  const plano = planoBasic;
 
   const [tenant] = await db
     .insert(tenants)

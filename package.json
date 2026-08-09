@@ -11,7 +11,10 @@
     "start": "tsx server/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/db/migrate.ts",
-    "db:seed": "tsx server/db/seed.ts"
+    "db:seed": "tsx server/db/seed.ts",
+    "whatsapp:evolution": "docker compose -f docker-compose.whatsapp.yml --project-name encaixe-wa up -d",
+    "whatsapp:evolution:down": "docker compose -f docker-compose.whatsapp.yml --project-name encaixe-wa down",
+    "whatsapp:evolution:logs": "docker compose -f docker-compose.whatsapp.yml --project-name encaixe-wa logs --tail=100 -f evolution-api"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",

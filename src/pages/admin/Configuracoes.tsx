@@ -1,15 +1,20 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
 import { CalendarOff, Clock3, Palette, Plus, Trash2 } from "lucide-react";
 import { api, dataHora, type Professional, type Tenant } from "../../lib/api";
+import { aplicarCorMarca } from "../../lib/theme";
+
+export type AbaConfig = "identidade" | "horarios" | "bloqueios";
 
 export function Configuracoes({
   token,
   tenant,
   atualizar,
+  aba = "identidade",
 }: {
   token: string;
   tenant: Tenant;
   atualizar: (t: Tenant) => void;
+  aba?: AbaConfig;
 }) {
   type Horario = { id: number; professionalId: number; weekday: number; startTime: string; endTime: string };
   type Bloqueio = { id: number; professionalId?: number; startsAt: string; endsAt: string; reason?: string };
@@ -44,7 +49,7 @@ export function Configuracoes({
   function aplicarCorPreview(hex: string) {
     setCorPreview(hex);
     setCorTexto(hex);
-    document.documentElement.style.setProperty("--cor-marca", hex);
+    aplicarCorMarca(hex);
   }
 
   async function salvar(evento: FormEvent<HTMLFormElement>) {
@@ -71,7 +76,7 @@ export function Configuracoes({
       token,
     );
     localStorage.setItem("encaixe_tenant", JSON.stringify(novo));
-    document.documentElement.style.setProperty("--cor-marca", novo.primaryColor);
+    aplicarCorMarca(novo.primaryColor);
     setCorPreview(novo.primaryColor);
     setCorTexto(novo.primaryColor);
     atualizar(novo);
@@ -121,230 +126,264 @@ export function Configuracoes({
 
   return (
     <section className="admin-config">
-      <div className="admin-panel">
-        <div className="admin-panel__title">
-          <div>
-            <h2>
-              <Palette size={18} style={{ verticalAlign: -3, marginRight: 8, color: "var(--cor-marca)" }} />
-              Identidade do negócio
-            </h2>
-            <p className="admin-panel__lead">Nome, contato e a cor da marca usada em todo o Encaixe.</p>
-          </div>
-        </div>
-
-        <div className="admin-color-preview" style={{ "--cor-marca": corPreview } as CSSProperties}>
-          <div className="admin-color-preview__swatch" aria-hidden />
-          <div>
-            <strong>Pré-visualização de --cor-marca</strong>
-            <small>
-              {corPreview} · botões, menu ativo e destaques do painel usam esta cor.
-            </small>
-          </div>
-        </div>
-
-        <form className="admin-form admin-config__grid" onSubmit={salvar} style={{ marginTop: "1rem" }}>
-          <label className="admin-field">
-            <span>Nome</span>
-            <input name="name" defaultValue={tenant.name} required />
-          </label>
-          <label className="admin-field">
-            <span>Telefone</span>
-            <input name="phone" defaultValue={tenant.phone} />
-          </label>
-          <label className="admin-field">
-            <span>Endereço</span>
-            <input name="address" defaultValue={tenant.address} />
-          </label>
-          <label className="admin-field">
-            <span>Cor da marca</span>
-            <div className="admin-color-field">
-              <input
-                name="primaryColor"
-                type="color"
-                value={corPreview}
-                onChange={(e) => aplicarCorPreview(e.target.value)}
-                aria-label="Seletor de cor da marca"
-              />
-              <input
-                type="text"
-                value={corTexto}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setCorTexto(v);
-                  if (/^#[0-9A-Fa-f]{6}$/.test(v)) aplicarCorPreview(v);
-                }}
-                onBlur={() => {
-                  if (!/^#[0-9A-Fa-f]{6}$/.test(corTexto)) setCorTexto(corPreview);
-                }}
-                pattern="^#[0-9A-Fa-f]{6}$"
-                aria-label="Código hexadecimal da cor"
-              />
+      {aba === "identidade" && (
+        <div className="admin-panel">
+          <div className="admin-panel__title">
+            <div>
+              <h2>
+                <Palette size={18} style={{ verticalAlign: -3, marginRight: 8, color: "var(--cor-marca)" }} />
+                Identidade e dados
+              </h2>
+              <p className="admin-panel__lead">
+                A cor base gera automaticamente botões, fundos, bordas, ícones e gradientes em todo o sistema (claro e escuro).
+              </p>
             </div>
-          </label>
-          <div className="admin-actions">
-            <button type="submit" className="admin-btn admin-btn--primary">
-              Salvar alterações
-            </button>
           </div>
-        </form>
 
-        {aviso && <div className="admin-notice admin-notice--ok">{aviso}</div>}
-      </div>
-
-      <div className="admin-panel">
-        <div className="admin-panel__title">
-          <div>
-            <h2>
-              <Clock3 size={18} style={{ verticalAlign: -3, marginRight: 8, color: "var(--cor-marca)" }} />
-              Jornada de trabalho
-            </h2>
-            <p className="admin-panel__lead">Horários semanais por profissional.</p>
-          </div>
-        </div>
-
-        <form className="admin-form admin-form--inline" onSubmit={salvarHorario}>
-          <label className="admin-field">
-            <span>Profissional</span>
-            <select name="professionalId" required>
-              {profissionais.map((p) => (
-                <option value={p.id} key={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="admin-field">
-            <span>Dia</span>
-            <select name="weekday">
-              {dias.map((dia, indice) => (
-                <option value={indice} key={dia}>
-                  {dia}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="admin-field">
-            <span>Início</span>
-            <input name="startTime" type="time" defaultValue="09:00" required />
-          </label>
-          <label className="admin-field">
-            <span>Fim</span>
-            <input name="endTime" type="time" defaultValue="18:00" required />
-          </label>
-          <div className="admin-actions">
-            <button type="submit" className="admin-btn admin-btn--primary">
-              <Plus size={16} /> Salvar jornada
-            </button>
-          </div>
-        </form>
-
-        <div className="admin-list" style={{ marginTop: "1rem" }}>
-          {horarios.map((h) => (
-            <article key={h.id} className="admin-row">
-              <span className="admin-icon">
-                <Clock3 size={18} />
-              </span>
-              <div className="admin-row__body">
-                <strong>{profissionais.find((p) => p.id === h.professionalId)?.name}</strong>
-                <small>
-                  {dias[h.weekday]} · {h.startTime.slice(0, 5)} às {h.endTime.slice(0, 5)}
-                </small>
+          <div className="admin-color-preview" style={{ "--cor-marca": corPreview } as CSSProperties}>
+            <div className="admin-color-preview__swatch" aria-hidden />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <strong>Cor base do negócio</strong>
+              <small>{corPreview} · as variantes abaixo atualizam ao vivo ao mudar a cor.</small>
+              <div className="admin-color-variants" aria-label="Variantes geradas">
+                <span style={{ background: "var(--cor-marca)" }} title="Base" />
+                <span style={{ background: "var(--marca-hover)" }} title="Hover" />
+                <span style={{ background: "var(--marca-suave-forte)" }} title="Suave" />
+                <span style={{ background: "var(--marca-borda)" }} title="Borda" />
+                <span style={{ background: "var(--fundo)" }} title="Fundo" />
+                <span style={{ background: "var(--painel)" }} title="Painel" />
               </div>
-              <div className="admin-row__actions">
-                <button
-                  type="button"
-                  className="admin-btn admin-btn--sm admin-btn--danger"
-                  onClick={() => api(`/admin/hours/${h.id}`, { method: "DELETE" }, token).then(carregarAgenda)}
-                >
-                  <Trash2 size={14} /> Excluir
-                </button>
+            </div>
+          </div>
+
+          <form className="admin-form admin-config__grid" onSubmit={salvar} style={{ marginTop: "1rem" }} key={tenant.id}>
+            <label className="admin-field">
+              <span>Nome</span>
+              <input name="name" defaultValue={tenant.name} required />
+            </label>
+            <label className="admin-field">
+              <span>Telefone</span>
+              <input name="phone" defaultValue={tenant.phone} />
+            </label>
+            <label className="admin-field">
+              <span>Endereço</span>
+              <input name="address" defaultValue={tenant.address} />
+            </label>
+            <label className="admin-field">
+              <span>Cor da marca</span>
+              <div className="admin-color-field">
+                <input
+                  name="primaryColor"
+                  type="color"
+                  value={corPreview}
+                  onChange={(e) => aplicarCorPreview(e.target.value)}
+                  aria-label="Seletor de cor da marca"
+                />
+                <input
+                  type="text"
+                  value={corTexto}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCorTexto(v);
+                    if (/^#[0-9A-Fa-f]{6}$/.test(v)) aplicarCorPreview(v);
+                  }}
+                  onBlur={() => {
+                    if (!/^#[0-9A-Fa-f]{6}$/.test(corTexto)) setCorTexto(corPreview);
+                  }}
+                  pattern="^#[0-9A-Fa-f]{6}$"
+                  aria-label="Código hexadecimal da cor"
+                />
               </div>
-            </article>
-          ))}
+            </label>
+            <label className="admin-field">
+              <span>URL do logo</span>
+              <input name="logoUrl" defaultValue={tenant.logoUrl ?? ""} placeholder="https://… ou /images/logo.png" />
+            </label>
+            <label className="admin-field">
+              <span>URL da foto principal (hero)</span>
+              <input name="heroImageUrl" defaultValue={tenant.heroImageUrl ?? ""} placeholder="https://… ou /images/hero.jpg" />
+            </label>
+            <label className="admin-field">
+              <span>Galeria 1</span>
+              <input name="gallery1" defaultValue={tenant.galleryUrls?.[0] ?? ""} />
+            </label>
+            <label className="admin-field">
+              <span>Galeria 2</span>
+              <input name="gallery2" defaultValue={tenant.galleryUrls?.[1] ?? ""} />
+            </label>
+            <label className="admin-field">
+              <span>Galeria 3</span>
+              <input name="gallery3" defaultValue={tenant.galleryUrls?.[2] ?? ""} />
+            </label>
+            <div className="admin-actions">
+              <button type="submit" className="admin-btn admin-btn--primary">
+                Salvar alterações
+              </button>
+            </div>
+          </form>
+
+          {aviso && <div className="admin-notice admin-notice--ok">{aviso}</div>}
         </div>
+      )}
 
-        {!horarios.length && (
-          <div className="admin-empty" style={{ marginTop: "1rem" }}>
-            <h3>Sem jornadas cadastradas</h3>
-            <p>Defina pelo menos um horário semanal para liberar slots na reserva pública.</p>
+      {aba === "horarios" && (
+        <div className="admin-panel">
+          <div className="admin-panel__title">
+            <div>
+              <h2>
+                <Clock3 size={18} style={{ verticalAlign: -3, marginRight: 8, color: "var(--cor-marca)" }} />
+                Jornada de trabalho
+              </h2>
+              <p className="admin-panel__lead">Horários semanais por profissional.</p>
+            </div>
           </div>
-        )}
-      </div>
 
-      <div className="admin-panel">
-        <div className="admin-panel__title">
-          <div>
-            <h2>
-              <CalendarOff size={18} style={{ verticalAlign: -3, marginRight: 8, color: "var(--cor-marca)" }} />
-              Bloqueios de agenda
-            </h2>
-            <p className="admin-panel__lead">Feriados, folgas e intervalos indisponíveis.</p>
+          <form className="admin-form admin-form--inline" onSubmit={salvarHorario}>
+            <label className="admin-field">
+              <span>Profissional</span>
+              <select name="professionalId" required>
+                {profissionais.map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="admin-field">
+              <span>Dia</span>
+              <select name="weekday">
+                {dias.map((dia, indice) => (
+                  <option value={indice} key={dia}>
+                    {dia}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="admin-field">
+              <span>Início</span>
+              <input name="startTime" type="time" defaultValue="09:00" required />
+            </label>
+            <label className="admin-field">
+              <span>Fim</span>
+              <input name="endTime" type="time" defaultValue="18:00" required />
+            </label>
+            <div className="admin-actions">
+              <button type="submit" className="admin-btn admin-btn--primary">
+                <Plus size={16} /> Salvar jornada
+              </button>
+            </div>
+          </form>
+
+          <div className="admin-list" style={{ marginTop: "1rem" }}>
+            {horarios.map((h) => (
+              <article key={h.id} className="admin-row">
+                <span className="admin-icon">
+                  <Clock3 size={18} />
+                </span>
+                <div className="admin-row__body">
+                  <strong>{profissionais.find((p) => p.id === h.professionalId)?.name}</strong>
+                  <small>
+                    {dias[h.weekday]} · {h.startTime.slice(0, 5)} às {h.endTime.slice(0, 5)}
+                  </small>
+                </div>
+                <div className="admin-row__actions">
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--sm admin-btn--danger"
+                    onClick={() => api(`/admin/hours/${h.id}`, { method: "DELETE" }, token).then(carregarAgenda)}
+                  >
+                    <Trash2 size={14} /> Excluir
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
+
+          {!horarios.length && (
+            <div className="admin-empty" style={{ marginTop: "1rem" }}>
+              <h3>Sem jornadas cadastradas</h3>
+              <p>Defina pelo menos um horário semanal para liberar slots na reserva pública.</p>
+            </div>
+          )}
         </div>
+      )}
 
-        <form className="admin-form admin-form--inline" onSubmit={salvarBloqueio}>
-          <label className="admin-field">
-            <span>Escopo</span>
-            <select name="professionalId">
-              <option value="">Toda a equipe</option>
-              {profissionais.map((p) => (
-                <option value={p.id} key={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="admin-field">
-            <span>Início</span>
-            <input name="startsAt" type="datetime-local" required />
-          </label>
-          <label className="admin-field">
-            <span>Fim</span>
-            <input name="endsAt" type="datetime-local" required />
-          </label>
-          <label className="admin-field">
-            <span>Motivo</span>
-            <input name="reason" placeholder="Ex.: Feriado" />
-          </label>
-          <div className="admin-actions">
-            <button type="submit" className="admin-btn admin-btn--primary">
-              <Plus size={16} /> Bloquear
-            </button>
+      {aba === "bloqueios" && (
+        <div className="admin-panel">
+          <div className="admin-panel__title">
+            <div>
+              <h2>
+                <CalendarOff size={18} style={{ verticalAlign: -3, marginRight: 8, color: "var(--cor-marca)" }} />
+                Bloqueios de agenda
+              </h2>
+              <p className="admin-panel__lead">Feriados, folgas e intervalos indisponíveis.</p>
+            </div>
           </div>
-        </form>
 
-        <div className="admin-list" style={{ marginTop: "1rem" }}>
-          {bloqueios.map((b) => (
-            <article key={b.id} className="admin-row">
-              <span className="admin-icon admin-icon--muted">
-                <CalendarOff size={18} />
-              </span>
-              <div className="admin-row__body">
-                <strong>{b.reason || "Horário bloqueado"}</strong>
-                <small>
-                  {dataHora(b.startsAt)} até {dataHora(b.endsAt)}
-                </small>
-              </div>
-              <div className="admin-row__actions">
-                <button
-                  type="button"
-                  className="admin-btn admin-btn--sm admin-btn--danger"
-                  onClick={() => api(`/admin/blocks/${b.id}`, { method: "DELETE" }, token).then(carregarAgenda)}
-                >
-                  <Trash2 size={14} /> Excluir
-                </button>
-              </div>
-            </article>
-          ))}
+          <form className="admin-form admin-form--inline" onSubmit={salvarBloqueio}>
+            <label className="admin-field">
+              <span>Escopo</span>
+              <select name="professionalId">
+                <option value="">Toda a equipe</option>
+                {profissionais.map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="admin-field">
+              <span>Início</span>
+              <input name="startsAt" type="datetime-local" required />
+            </label>
+            <label className="admin-field">
+              <span>Fim</span>
+              <input name="endsAt" type="datetime-local" required />
+            </label>
+            <label className="admin-field">
+              <span>Motivo</span>
+              <input name="reason" placeholder="Ex.: Feriado" />
+            </label>
+            <div className="admin-actions">
+              <button type="submit" className="admin-btn admin-btn--primary">
+                <Plus size={16} /> Bloquear
+              </button>
+            </div>
+          </form>
+
+          <div className="admin-list" style={{ marginTop: "1rem" }}>
+            {bloqueios.map((b) => (
+              <article key={b.id} className="admin-row">
+                <span className="admin-icon admin-icon--muted">
+                  <CalendarOff size={18} />
+                </span>
+                <div className="admin-row__body">
+                  <strong>{b.reason || "Horário bloqueado"}</strong>
+                  <small>
+                    {dataHora(b.startsAt)} até {dataHora(b.endsAt)}
+                  </small>
+                </div>
+                <div className="admin-row__actions">
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--sm admin-btn--danger"
+                    onClick={() => api(`/admin/blocks/${b.id}`, { method: "DELETE" }, token).then(carregarAgenda)}
+                  >
+                    <Trash2 size={14} /> Excluir
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {!bloqueios.length && (
+            <div className="admin-empty" style={{ marginTop: "1rem" }}>
+              <h3>Nenhum bloqueio</h3>
+              <p>Bloqueios removem intervalos específicos da disponibilidade.</p>
+            </div>
+          )}
         </div>
-
-        {!bloqueios.length && (
-          <div className="admin-empty" style={{ marginTop: "1rem" }}>
-            <h3>Nenhum bloqueio</h3>
-            <p>Bloqueios removem intervalos específicos da disponibilidade.</p>
-          </div>
-        )}
-      </div>
+      )}
     </section>
   );
 }

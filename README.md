@@ -39,15 +39,25 @@ npm run dev
 
 Endereços:
 
+- Painel mestre (suas contas): `http://localhost:5173/master`
 - Reserva demo: `http://localhost:5173/barbearia-demo`
-- Painel: `http://localhost:5173/admin`
+- Painel do negócio: `http://localhost:5173/admin`
 - API: `http://localhost:5000/api/health`
 
-Credenciais demonstrativas:
+No `/master` você gerencia **Negócios**, **Planos** (Basic / Pro / Enterprise), **WhatsApp** (bot + Evolution + simulador) e **Configurações**.
+
+Credenciais do painel mestre (`.env`):
+
+- E-mail: `master@encaixe.local`
+- Senha: `Master@1234`
+
+Credenciais da conta demo (seed):
 
 - E-mail: `admin@demo.encaixe`
 - Senha: `Demo@1234`
 - Identificador: `barbearia-demo`
+
+No `/master` você cria quantos negócios quiser. Cada um ganha slug próprio (`/nome-do-negocio`), admin próprio e painel `/admin` para alterar nome, fotos, clientes, serviços e agenda.
 
 ## Scripts
 

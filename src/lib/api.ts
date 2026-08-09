@@ -1,4 +1,14 @@
-export type Tenant = { id: number; name: string; slug: string; phone?: string; address?: string; primaryColor: string; logoUrl?: string };
+export type Tenant = {
+  id: number;
+  name: string;
+  slug: string;
+  phone?: string;
+  address?: string;
+  primaryColor: string;
+  logoUrl?: string | null;
+  heroImageUrl?: string | null;
+  galleryUrls?: string[];
+};
 export type Service = { id: number; name: string; description?: string; durationMinutes: number; priceCents: number; icon?: string; active: boolean };
 export type Professional = { id: number; name: string; bio?: string; avatarUrl?: string; active: boolean };
 export type Customer = { id: number; name: string; phone: string; email?: string | null; active: boolean };

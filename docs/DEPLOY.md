@@ -80,7 +80,18 @@ sudo certbot renew --dry-run
 
 O Certbot ajusta o bloco do Nginx e agenda a renovação automática.
 
-## 7. Operação
+## 7. WhatsApp (opcional, produção)
+
+Na mesma VPS do Brasa, use o instalador dedicado (Evolution na porta **8081**, sem conflito com o Brasa em **8080**):
+
+```bash
+cd /var/www/encaixe
+sudo bash scripts/install-whatsapp.sh
+```
+
+Detalhes multi-tenant: [`docs/WHATSAPP-PRODUCAO.MD`](./WHATSAPP-PRODUCAO.MD).
+
+## 8. Operação
 
 ```bash
 pm2 status

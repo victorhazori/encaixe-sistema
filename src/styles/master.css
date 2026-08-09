@@ -1,0 +1,249 @@
+/* Encaixe — painel master */
+
+.master-login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.master-login-card {
+  width: min(440px, 100%);
+  padding: 1.75rem;
+  border-radius: 20px;
+  border: 1px solid var(--borda);
+  background: var(--painel);
+  box-shadow: var(--sombra);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.master-login-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.master-login-card h1 {
+  margin: 0.35rem 0 0;
+}
+
+.master-login-card > p {
+  margin: 0;
+  color: var(--suave);
+}
+
+.master-shell .admin__header {
+  justify-content: space-between;
+}
+
+.master-badge {
+  background: var(--marca-suave) !important;
+}
+
+.master-section,
+.master-plans,
+.master-wa {
+  display: grid;
+  gap: 1rem;
+}
+
+.master-wa-auth-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.master-wa-auth-card {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.master-wa-auth-card > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.master-form,
+.master-plan-card,
+.master-config {
+  display: grid;
+  gap: 1rem;
+}
+
+.master-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.master-tenant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.master-tenant-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.15rem;
+  border-radius: 18px;
+  border: 1px solid var(--borda);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--painel) 92%, var(--cor-marca)), var(--painel));
+  box-shadow: var(--sombra-suave);
+}
+
+.master-tenant-card__head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.master-tenant-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px var(--marca-suave);
+}
+
+.master-tenant-card strong {
+  display: block;
+  font-family: var(--fonte-display);
+  letter-spacing: -0.03em;
+}
+
+.master-tenant-card small,
+.master-tenant-meta,
+.hint {
+  color: var(--suave);
+  font-size: 0.82rem;
+}
+
+.master-tenant-meta { margin: 0; }
+
+.master-tenant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.master-plans {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.master-plan-card__title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.master-plan-card__title h2 { margin: 0; }
+
+.master-plan-slug {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cor-marca);
+}
+
+.master-feature-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.master-check {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--texto);
+  font-size: 0.9rem;
+}
+
+.master-check input {
+  width: auto;
+  min-height: 0;
+  accent-color: var(--cor-marca);
+}
+
+.master-wa-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.master-wa-head h2 { margin: 0 0 0.25rem; }
+
+.master-qr {
+  width: min(260px, 100%);
+  border-radius: 16px;
+  border: 1px solid var(--borda);
+  background: #fff;
+  padding: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.master-sandbox-log {
+  max-height: 280px;
+  overflow: auto;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--borda);
+  background: var(--fundo-2);
+}
+
+.master-sandbox-log p {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+}
+
+.master-sandbox-log .user { color: var(--texto); }
+.master-sandbox-log .bot { color: var(--cor-marca); }
+
+.master-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.master-config-grid article {
+  padding: 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--borda);
+  background: var(--painel-claro);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.master-config-grid strong {
+  font-family: var(--fonte-display);
+}
+
+.admin-field textarea {
+  width: 100%;
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  background: var(--painel);
+  color: var(--texto);
+  font: inherit;
+  resize: vertical;
+}
+
+@media (max-width: 720px) {
+  .master-form-grid { grid-template-columns: 1fr; }
+  .master-plans { grid-template-columns: 1fr; }
+}

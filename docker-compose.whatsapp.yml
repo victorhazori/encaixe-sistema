@@ -1,0 +1,107 @@
+# Evolution API dedicada ao Encaixe (SaaS multi-tenant).
+#
+# Importante na mesma VPS do Brasa:
+#   - Brasa usa Evolution em 127.0.0.1:8080
+#   - Encaixe usa Evolution em 127.0.0.1:8081  ← não conflita
+#   - Rede/volumes com prefixo encaixe-*
+#
+# Cada negócio = 1 instância Evolution: encaixe-{slug}
+# O webhook aponta para a API do Encaixe, que roteia pelo nome da instância.
+#
+# Uso:
+#   set -a && source .env && set +a
+#   docker compose -f docker-compose.whatsapp.yml --project-name encaixe-wa up -d
+
+services:
+  evolution-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --port 6379
+    volumes:
+      - encaixe_evolution_redis:/data
+    networks:
+      - encaixe-evolution-net
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  evolution-postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: evolution
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${EVOLUTION_DB_PASSWORD:?Defina EVOLUTION_DB_PASSWORD}
+    volumes:
+      - encaixe_evolution_postgres:/var/lib/postgresql/data
+    networks:
+      - encaixe-evolution-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U evolution -d evolution']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    depends_on:
+      evolution-redis:
+        condition: service_healthy
+      evolution-postgres:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:8081:8080'
+    environment:
+      SERVER_NAME: encaixe-evolution
+      SERVER_TYPE: http
+      SERVER_PORT: '8080'
+      SERVER_URL: ${EVOLUTION_SERVER_URL:-http://127.0.0.1:8081}
+
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?Defina EVOLUTION_API_KEY}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: 'false'
+
+      DATABASE_ENABLED: 'true'
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${EVOLUTION_DB_PASSWORD}@evolution-postgres:5432/evolution?schema=public
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_encaixe
+      DATABASE_SAVE_DATA_INSTANCE: 'true'
+      DATABASE_SAVE_DATA_NEW_MESSAGE: 'true'
+      DATABASE_SAVE_MESSAGE_UPDATE: 'true'
+      DATABASE_SAVE_DATA_CONTACTS: 'true'
+      DATABASE_SAVE_DATA_CHATS: 'true'
+      DATABASE_SAVE_DATA_LABELS: 'true'
+      DATABASE_SAVE_DATA_HISTORIC: 'true'
+
+      CACHE_REDIS_ENABLED: 'true'
+      CACHE_REDIS_URI: redis://evolution-redis:6379/1
+      CACHE_REDIS_PREFIX_KEY: encaixe_evolution
+      CACHE_REDIS_SAVE_INSTANCES: 'false'
+      CACHE_LOCAL_ENABLED: 'false'
+
+      RABBITMQ_ENABLED: 'false'
+      S3_ENABLED: 'false'
+
+      LOG_LEVEL: ERROR,WARN,INFO,LOG
+      LOG_COLOR: 'false'
+      DEL_INSTANCE: 'false'
+      CONFIG_SESSION_PHONE_CLIENT: Encaixe
+      CONFIG_SESSION_PHONE_NAME: Chrome
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - encaixe_evolution_instances:/evolution/instances
+    networks:
+      - encaixe-evolution-net
+
+networks:
+  encaixe-evolution-net:
+    name: encaixe-evolution-net
+    driver: bridge
+
+volumes:
+  encaixe_evolution_redis:
+  encaixe_evolution_postgres:
+  encaixe_evolution_instances:
