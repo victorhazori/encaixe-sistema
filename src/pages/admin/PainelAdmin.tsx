@@ -132,6 +132,14 @@ export function PainelAdmin() {
     setOpenGroups((prev) => (prev[activeGroupId] === undefined ? { ...prev, [activeGroupId]: true } : prev));
   }, [activeGroupId]);
 
+  useEffect(() => {
+    document.body.classList.toggle("admin-drawer-open", menu);
+    if (menu) {
+      setOpenGroups(Object.fromEntries(navGroups.map((g) => [g.id, true])));
+    }
+    return () => document.body.classList.remove("admin-drawer-open");
+  }, [menu]);
+
   // Sessão de outra loja → manda para o /{slug}/admin correto
   useEffect(() => {
     if (!token || !tenant?.slug || !slugUrl) return;

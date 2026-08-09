@@ -608,6 +608,23 @@
     width: calc(100% - 1.5rem);
     margin: 0 auto 1rem;
     z-index: 40;
+    grid-template-columns: 1fr;
+  }
+
+  .resumo-flutuante-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cabecalho-auth {
+    flex-wrap: wrap;
+    gap: .65rem;
+  }
+
+  .auth-area {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 }
 

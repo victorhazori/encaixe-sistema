@@ -112,6 +112,11 @@ export function PainelMaster() {
     carregarWaAuth().catch((e: Error) => setErro(e.message));
   }, [token, secao]);
 
+  useEffect(() => {
+    document.body.classList.toggle("admin-drawer-open", menu);
+    return () => document.body.classList.remove("admin-drawer-open");
+  }, [menu]);
+
   async function entrar(evento: FormEvent) {
     evento.preventDefault();
     setErro("");

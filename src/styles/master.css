@@ -246,4 +246,8 @@
 @media (max-width: 720px) {
   .master-form-grid { grid-template-columns: 1fr; }
   .master-plans { grid-template-columns: 1fr; }
+  .master-tenant-actions { width: 100%; }
+  .master-tenant-actions .admin-btn { flex: 1 1 auto; justify-content: center; }
+  .master-wa-auth-card { align-items: stretch; }
+  .master-login-card { padding: 1.35rem 1.15rem; }
 }
