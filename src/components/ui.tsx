@@ -1,10 +1,13 @@
 import { type ReactNode } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { MarcaIcone } from "./MarcaIcone";
 
 export function Marca({ compacta = false }: { compacta?: boolean }) {
   return (
     <div className="marca" aria-label="Encaixe">
-      <span className="marca-simbolo">E</span>
+      <span className="marca-simbolo">
+        <MarcaIcone />
+      </span>
       {!compacta && <strong>Encaixe</strong>}
     </div>
   );

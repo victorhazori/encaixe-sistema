@@ -183,17 +183,24 @@ input:focus, select:focus, textarea:focus {
 }
 .marca-simbolo {
   width: 36px;
+  height: 36px;
   aspect-ratio: 1;
   display: grid;
   place-items: center;
   border-radius: 11px;
   color: var(--texto-on-marca);
-  background: var(--cor-marca);
-  font-family: var(--fonte-ui);
-  font-weight: 700;
-  font-size: 1rem;
-  letter-spacing: -.02em;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--cor-marca) 82%, #fff), var(--cor-marca));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+    0 6px 16px color-mix(in srgb, var(--cor-marca) 28%, transparent);
   flex-shrink: 0;
+  overflow: hidden;
+}
+.marca-simbolo svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 .sobretitulo {
   display: inline-flex;
