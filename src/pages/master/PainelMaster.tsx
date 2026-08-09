@@ -142,8 +142,7 @@ export function PainelMaster() {
     evento.preventDefault();
     setErro("");
     setOk("");
-    const form = evento.currentTarget;
-    const f = new FormData(form);
+    const f = new FormData(evento.currentTarget);
     try {
       const novo = await api<TenantMaster & { loginHint: { slug: string; email: string } }>("/master/tenants", {
         method: "POST",
@@ -160,11 +159,12 @@ export function PainelMaster() {
           seedDefaults: true,
         }),
       }, token);
+      setErro("");
       setOk(`Conta criada: /${novo.loginHint.slug} · painel /${novo.loginHint.slug}/admin · ${novo.loginHint.email}`);
-      form.reset();
       setMostrarForm(false);
-      await carregar();
+      await carregar().catch(() => undefined);
     } catch (e) {
+      setOk("");
       setErro(e instanceof Error ? e.message : "Não foi possível criar a conta.");
     }
   }
