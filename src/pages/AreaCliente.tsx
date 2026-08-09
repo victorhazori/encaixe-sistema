@@ -78,12 +78,8 @@ export function AreaCliente() {
     return (
       <main className="cli-auth" style={temaStyle}>
         <div className="cli-auth-split">
-          <section className="cli-auth-hero" aria-hidden={false}>
-            <img
-              className="cli-auth-hero-foto"
-              src="/images/ambiente.jpg"
-              alt=""
-            />
+          <section className="cli-auth-hero">
+            <img className="cli-auth-hero-foto" src="/images/ambiente.jpg" alt="" />
             <Marca />
             <div className="cli-auth-hero-copy">
               <span className="sobretitulo">Área do cliente</span>
@@ -96,6 +92,9 @@ export function AreaCliente() {
           </section>
 
           <section className="cli-auth-panel">
+            <div className="cli-auth-tema">
+              <TemaToggle />
+            </div>
             <form className="cli-auth-card" onSubmit={autenticarCliente}>
               <div className="cli-toggle" role="tablist" aria-label="Modo de acesso">
                 <button
@@ -143,7 +142,13 @@ export function AreaCliente() {
               </label>
               <label>
                 Senha
-                <input name="password" type="password" autoComplete={modo === "login" ? "current-password" : "new-password"} minLength={8} required />
+                <input
+                  name="password"
+                  type="password"
+                  autoComplete={modo === "login" ? "current-password" : "new-password"}
+                  minLength={8}
+                  required
+                />
               </label>
 
               <button className="botao-principal">
