@@ -54,16 +54,30 @@ cp -a "${PROJECT_DIR}/dist/." "${WWW_ROOT}/current/"
 
 if [[ ! -f "${PROJECT_DIR}/.env" ]]; then
   cp "${PROJECT_DIR}/.env.example" "${PROJECT_DIR}/.env"
+  # Em servidor Linux, nunca deixe PGlite (é só para Windows local)
+  sed -i 's/^DATABASE_URL=pglite/# DATABASE_URL=pglite/' "${PROJECT_DIR}/.env" || true
+  if ! grep -Eiq '^[[:space:]]*DATABASE_URL[[:space:]]*=[[:space:]]*postgresql://' "${PROJECT_DIR}/.env"; then
+    {
+      echo ""
+      echo "NODE_ENV=production"
+      echo "DATABASE_URL=postgresql://encaixe:SENHA@127.0.0.1:5432/encaixe"
+    } >> "${PROJECT_DIR}/.env"
+  fi
   chmod 600 "${PROJECT_DIR}/.env"
-  log "Arquivo .env criado. Defina DATABASE_URL e JWT_SECRET, depois: npm run db:migrate && npm run db:seed"
+  log "Arquivo .env criado. Defina DATABASE_URL postgresql:// e JWT_SECRET, depois: npm run db:migrate && npm run db:seed"
+fi
+
+if grep -Eiq '^[[:space:]]*DATABASE_URL[[:space:]]*=[[:space:]]*pglite' "${PROJECT_DIR}/.env" 2>/dev/null; then
+  log "ERRO: DATABASE_URL=pglite no servidor. Troque por postgresql://... no .env do Encaixe."
+  exit 1
 fi
 
 # Migra o banco se DATABASE_URL estiver configurada
-if grep -q 'DATABASE_URL=.\+' "${PROJECT_DIR}/.env" 2>/dev/null; then
+if grep -Eiq '^[[:space:]]*DATABASE_URL[[:space:]]*=[[:space:]]*postgresql://' "${PROJECT_DIR}/.env" 2>/dev/null; then
   log "Rodando migrations (drizzle)…"
   (cd "${PROJECT_DIR}" && npm run db:migrate) || log "Aviso: migrate falhou — confira Postgres e DATABASE_URL"
 else
-  log "DATABASE_URL vazia — migrate adiado. Configure o .env e rode: npm run db:migrate && npm run db:seed"
+  log "DATABASE_URL postgresql:// ausente — migrate adiado. Configure o .env e rode: npm run db:migrate && npm run db:seed"
 fi
 
 if [[ "$PULAR_NGINX" == false ]]; then

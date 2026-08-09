@@ -9,11 +9,17 @@ import * as schema from "./schema.js";
 
 const databaseUrl = (process.env.DATABASE_URL || "").trim();
 
-/** Local sem Docker/Postgres: DATABASE_URL=pglite */
+/** Local sem Docker/Postgres: DATABASE_URL=pglite — proibido em produção. */
 export const usingPglite =
   !databaseUrl ||
   databaseUrl === "pglite" ||
   databaseUrl.startsWith("pglite:");
+
+if (usingPglite && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "DATABASE_URL=pglite não é permitido em produção. Use PostgreSQL real (postgresql://...) no .env do servidor.",
+  );
+}
 
 type Closable = { end: () => Promise<void> };
 
