@@ -322,8 +322,9 @@ master.patch("/tenants/:id", async (req, res) => {
   if (!tenant) return res.status(404).json({ erro: "Negócio não encontrado." });
 
   // Plano sem WhatsApp → revoga autorização (Basic não fica “autorizado”)
-  if (dados.planId !== undefined) {
-    const [plano] = await db.select().from(plans).where(eq(plans.id, dados.planId)).limit(1);
+  if (typeof dados.planId === "number") {
+    const planId = dados.planId;
+    const [plano] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
     const features = normalizarFeatures(plano?.features);
     if (!temFeature(features, "whatsapp_bot")) {
       await db.update(tenantWhatsapp).set({
