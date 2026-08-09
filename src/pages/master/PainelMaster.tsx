@@ -137,7 +137,8 @@ export function PainelMaster() {
     evento.preventDefault();
     setErro("");
     setOk("");
-    const f = new FormData(evento.currentTarget);
+    const form = evento.currentTarget;
+    const f = new FormData(form);
     try {
       const novo = await api<TenantMaster & { loginHint: { slug: string; email: string } }>("/master/tenants", {
         method: "POST",
@@ -155,7 +156,7 @@ export function PainelMaster() {
         }),
       }, token);
       setOk(`Conta criada: /${novo.loginHint.slug} · painel /${novo.loginHint.slug}/admin · ${novo.loginHint.email}`);
-      evento.currentTarget.reset();
+      form.reset();
       setMostrarForm(false);
       await carregar();
     } catch (e) {
