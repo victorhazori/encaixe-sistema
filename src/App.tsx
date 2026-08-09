@@ -73,6 +73,30 @@ function Marca({ compacta = false }: { compacta?: boolean }) {
   return <div className="marca"><span className="marca-simbolo">E</span>{!compacta && <strong>Encaixe</strong>}</div>;
 }
 
+function useTenantTheme(slug?: string, fallbackColor?: string) {
+  const [tenant, setTenant] = useState<Tenant>();
+
+  useEffect(() => {
+    const cor = fallbackColor || tenant?.primaryColor;
+    if (cor) document.documentElement.style.setProperty("--cor-marca", cor);
+  }, [fallbackColor, tenant?.primaryColor]);
+
+  useEffect(() => {
+    if (!slug) return;
+    let ativo = true;
+    api<Tenant>(`/public/${slug}`)
+      .then((t) => {
+        if (!ativo) return;
+        setTenant(t);
+        document.documentElement.style.setProperty("--cor-marca", t.primaryColor);
+      })
+      .catch(() => { /* slug inválido — mantém fallback */ });
+    return () => { ativo = false; };
+  }, [slug]);
+
+  return tenant;
+}
+
 function Aviso({ children, erro = false }: { children: ReactNode; erro?: boolean }) {
   return <p className={erro ? "aviso erro" : "aviso"}>{children}</p>;
 }
@@ -176,6 +200,8 @@ function AgendamentoPublico() {
   const [erro, setErro] = useState("");
   const [carregandoMes, setCarregandoMes] = useState(false);
 
+  useTenantTheme(slug, tenant?.primaryColor);
+
   const idsServicos = useMemo(() => selecionados.map((s) => s.id), [selecionados]);
   const totalDuracao = selecionados.reduce((s, i) => s + i.durationMinutes, 0);
   const totalPreco = selecionados.reduce((s, i) => s + i.priceCents, 0);
@@ -186,7 +212,11 @@ function AgendamentoPublico() {
     Promise.all([
       api<Tenant>(`/public/${slug}`),
       api<Service[]>(`/public/${slug}/services`),
-    ]).then(([t, s]) => { setTenant(t); setServicos(s); }).catch((e: Error) => setErro(e.message));
+    ]).then(([t, s]) => {
+      setTenant(t);
+      setServicos(s);
+      document.documentElement.style.setProperty("--cor-marca", t.primaryColor);
+    }).catch((e: Error) => setErro(e.message));
   }, [slug]);
 
   useEffect(() => {
@@ -314,6 +344,21 @@ function AgendamentoPublico() {
           <span className="sobretitulo"><Sparkles size={14} /> Agenda aberta</span>
           <h1>Seu tempo, bem <em>encaixado.</em></h1>
           <p>Combine serviços, escolha quem atende e reserve no calendário — sem volta e meia no telefone.</p>
+          <div className="hero-foto">
+            <img src="/images/hero-barbearia.jpg" alt="Interior da barbearia com cadeiras e iluminação acolhedora" />
+            <div className="hero-foto-overlay">{tenant.name}</div>
+          </div>
+          <div className="galeria-fotos">
+            <figure>
+              <img src="/images/servicos.jpg" alt="Detalhe de serviços de corte e barba" />
+            </figure>
+            <figure>
+              <img src="/images/ambiente.jpg" alt="Ambiente da barbearia" />
+            </figure>
+            <figure>
+              <img src="/images/atendimento.jpg" alt="Atendimento personalizado ao cliente" />
+            </figure>
+          </div>
           <div className="estabelecimento">
             <div className="avatar-loja">{tenant.name.charAt(0)}</div>
             <div>
@@ -375,24 +420,26 @@ function AgendamentoPublico() {
             <div className="passo-bloco visivel">
               <div className="passo"><b>03</b><span>Escolha data e horário</span></div>
               {carregandoMes && <small className="hint">Carregando disponibilidade…</small>}
-              <CalendarioMes
-                ano={ano}
-                mes={mes}
-                selecionado={data}
-                disponibilidade={disponibilidadeMes}
-                onMudarMes={(a, m) => { setAno(a); setMes(m); setData(""); }}
-                onSelecionar={setData}
-              />
-              {data && (
-                <div className="horarios">
-                  {slots.map((hora) => (
-                    <button type="button" className={slot === hora ? "ativo" : ""} onClick={() => setSlot(hora)} key={hora}>
-                      {new Date(hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </button>
-                  ))}
-                  {!slots.length && <small>Nenhum horário disponível nesta data.</small>}
-                </div>
-              )}
+              <div className="agenda-quando">
+                <CalendarioMes
+                  ano={ano}
+                  mes={mes}
+                  selecionado={data}
+                  disponibilidade={disponibilidadeMes}
+                  onMudarMes={(a, m) => { setAno(a); setMes(m); setData(""); }}
+                  onSelecionar={setData}
+                />
+                {data && (
+                  <div className="horarios">
+                    {slots.map((hora) => (
+                      <button type="button" className={slot === hora ? "ativo" : ""} onClick={() => setSlot(hora)} key={hora}>
+                        {new Date(hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </button>
+                    ))}
+                    {!slots.length && <small>Nenhum horário disponível nesta data.</small>}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -435,6 +482,9 @@ function AgendamentoPublico() {
 
 function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Tenant) => void }) {
   const [erro, setErro] = useState("");
+  const [slug, setSlug] = useState("barbearia-demo");
+  const tenantTema = useTenantTheme(slug);
+
   async function entrar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     const form = new FormData(evento.currentTarget);
@@ -443,12 +493,14 @@ function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Tenant) =>
         method: "POST",
         body: JSON.stringify({ slug: form.get("slug"), email: form.get("email"), password: form.get("password") }),
       });
+      document.documentElement.style.setProperty("--cor-marca", resultado.tenant.primaryColor);
       aoEntrar(resultado.token, resultado.tenant);
     } catch (e) { setErro(e instanceof Error ? e.message : "Falha no acesso."); }
   }
   return (
-    <main className="login">
+    <main className="login" style={{ "--cor-marca": tenantTema?.primaryColor ?? "var(--cor-marca)" } as CSSProperties}>
       <section className="login-marca">
+        <img className="login-marca-foto" src="/images/ambiente.jpg" alt="Ambiente acolhedor da barbearia" />
         <Marca />
         <h1>A agenda do seu negócio, sem ruído.</h1>
         <p>Menos tempo organizando. Mais tempo atendendo.</p>
@@ -456,7 +508,16 @@ function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Tenant) =>
       <form className="cartao-login" onSubmit={entrar}>
         <span className="sobretitulo">Painel administrativo</span>
         <h2>Boas-vindas</h2>
-        <label>Identificador do negócio<input name="slug" defaultValue="barbearia-demo" required /></label>
+        <label>
+          Identificador do negócio
+          <input
+            name="slug"
+            value={slug}
+            required
+            onChange={(e) => setSlug(e.target.value.trim())}
+            onBlur={(e) => setSlug(e.target.value.trim() || "barbearia-demo")}
+          />
+        </label>
         <label>E-mail<input name="email" type="email" defaultValue="admin@demo.encaixe" required /></label>
         <label>Senha<input name="password" type="password" defaultValue="Demo@1234" required /></label>
         <button className="botao-principal">Entrar <ArrowRight size={18} /></button>
@@ -478,12 +539,15 @@ function PainelAdmin() {
   function entrar(novoToken: string, novoTenant: Tenant) {
     localStorage.setItem("encaixe_admin", novoToken);
     localStorage.setItem("encaixe_tenant", JSON.stringify(novoTenant));
+    document.documentElement.style.setProperty("--cor-marca", novoTenant.primaryColor);
     setToken(novoToken); setTenant(novoTenant);
   }
   function sair() {
     localStorage.removeItem("encaixe_admin"); localStorage.removeItem("encaixe_tenant");
     setToken(""); setTenant(undefined);
   }
+  useTenantTheme(tenant?.slug, tenant?.primaryColor);
+
   if (!token || !tenant) return <LoginAdmin aoEntrar={entrar} />;
 
   const itens = [
@@ -753,7 +817,9 @@ function Configuracoes({ token, tenant, atualizar }: { token: string; tenant: Te
         primaryColor: f.get("primaryColor"),
       }),
     }, token);
-    localStorage.setItem("encaixe_tenant", JSON.stringify(novo)); atualizar(novo);
+    localStorage.setItem("encaixe_tenant", JSON.stringify(novo));
+    document.documentElement.style.setProperty("--cor-marca", novo.primaryColor);
+    atualizar(novo);
   }
   async function salvarHorario(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault(); const f = new FormData(evento.currentTarget);
@@ -843,6 +909,8 @@ function AreaCliente() {
   const [itens, setItens] = useState<Appointment[]>([]);
   const [modo, setModo] = useState<"login" | "cadastro">("login");
   const [erro, setErro] = useState("");
+  const tenant = useTenantTheme(slug);
+  const corMarca = tenant?.primaryColor;
 
   useEffect(() => {
     if (token) {
@@ -874,25 +942,30 @@ function AreaCliente() {
 
   if (!token) {
     return (
-      <main className="centro area-auth">
-        <Marca />
-        <form className="cartao-login" onSubmit={autenticarCliente}>
-          <h1>{modo === "login" ? "Seus agendamentos" : "Criar conta"}</h1>
-          {modo === "cadastro" && (
-            <>
-              <label>Nome<input name="name" required /></label>
-              <label>Telefone<input name="phone" required /></label>
-            </>
-          )}
-          <label>E-mail<input name="email" type="email" required /></label>
-          <label>Senha<input name="password" type="password" minLength={8} required /></label>
-          <button className="botao-principal">{modo === "login" ? "Entrar" : "Cadastrar"}</button>
-          <button type="button" className="link-sutil" onClick={() => setModo(modo === "login" ? "cadastro" : "login")}>
-            {modo === "login" ? "Ainda não tenho conta" : "Já tenho uma conta"}
-          </button>
-          {erro && <Aviso erro>{erro}</Aviso>}
-          <Link to={`/${slug}`}>Voltar para agendamento</Link>
-        </form>
+      <main className="centro area-auth" style={corMarca ? { "--cor-marca": corMarca } as CSSProperties : undefined}>
+        <div className="area-auth-com-foto">
+          <img className="area-auth-foto" src="/images/atendimento.jpg" alt="Profissional atendendo cliente na barbearia" />
+          <div>
+            <Marca />
+            <form className="cartao-login" onSubmit={autenticarCliente}>
+              <h1>{modo === "login" ? "Seus agendamentos" : "Criar conta"}</h1>
+              {modo === "cadastro" && (
+                <>
+                  <label>Nome<input name="name" required /></label>
+                  <label>Telefone<input name="phone" required /></label>
+                </>
+              )}
+              <label>E-mail<input name="email" type="email" required /></label>
+              <label>Senha<input name="password" type="password" minLength={8} required /></label>
+              <button className="botao-principal">{modo === "login" ? "Entrar" : "Cadastrar"}</button>
+              <button type="button" className="link-sutil" onClick={() => setModo(modo === "login" ? "cadastro" : "login")}>
+                {modo === "login" ? "Ainda não tenho conta" : "Já tenho uma conta"}
+              </button>
+              {erro && <Aviso erro>{erro}</Aviso>}
+              <Link to={`/${slug}`}>Voltar para agendamento</Link>
+            </form>
+          </div>
+        </div>
       </main>
     );
   }
@@ -903,7 +976,7 @@ function AreaCliente() {
   }
 
   return (
-    <main className="area-cliente">
+    <main className="area-cliente" style={corMarca ? { "--cor-marca": corMarca } as CSSProperties : undefined}>
       <header className="cabecalho-cliente">
         <Marca />
         <div className="auth-area">
