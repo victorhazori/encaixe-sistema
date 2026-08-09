@@ -39,10 +39,21 @@ type TenantMaster = Tenant & {
   whatsapp?: {
     authorized?: boolean;
     enabled: boolean;
+    canUse?: boolean;
+    blockedByPlan?: boolean;
     phone?: string | null;
     mode: string;
   } | null;
 };
+
+function rotuloWhatsapp(item: TenantMaster) {
+  const wa = item.whatsapp;
+  if (!wa) return "";
+  if (wa.blockedByPlan) return " · WhatsApp bloqueado (plano)";
+  if (wa.canUse && wa.enabled) return " · WhatsApp ativo";
+  if (wa.canUse && wa.authorized) return " · WhatsApp autorizado";
+  return "";
+}
 
 type WaAuthItem = {
   id: number;
@@ -369,7 +380,7 @@ export function PainelMaster() {
                   <p className="master-tenant-meta">
                     {item.customersCount} clientes · {item.appointmentsCount} agendamentos
                     {item.admin ? ` · ${item.admin.email}` : ""}
-                    {item.whatsapp?.authorized ? (item.whatsapp.enabled ? " · WhatsApp ativo" : " · WhatsApp autorizado") : ""}
+                    {rotuloWhatsapp(item)}
                   </p>
                   <label className="admin-field">
                     <span>Plano</span>
@@ -457,11 +468,17 @@ export function PainelMaster() {
                     <label className="master-check">
                       <input
                         type="checkbox"
-                        checked={item.authorized}
-                        disabled={!planoOk && !item.authorized}
+                        checked={item.authorized && planoOk}
+                        disabled={!planoOk}
                         onChange={(e) => autorizarWhatsapp(item, e.target.checked)}
                       />
-                      <span>{item.authorized ? "Autorizado" : "Não autorizado"}</span>
+                      <span>
+                        {!planoOk
+                          ? "Indisponível no plano"
+                          : item.authorized
+                            ? "Autorizado"
+                            : "Não autorizado"}
+                      </span>
                     </label>
                   </article>
                 );

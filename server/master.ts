@@ -208,15 +208,35 @@ master.get("/tenants", async (_req, res) => {
       eq(users.role, "admin"),
       eq(users.active, true),
     )).limit(1);
-    const [wa] = await db.select().from(tenantWhatsapp).where(eq(tenantWhatsapp.tenantId, tenant.id)).limit(1);
+    let [wa] = await db.select().from(tenantWhatsapp).where(eq(tenantWhatsapp.tenantId, tenant.id)).limit(1);
     const plano = tenant.planId ? planoPorId.get(tenant.planId) : undefined;
+    const features = normalizarFeatures(plano?.features);
+    if (wa?.authorized && !temFeature(features, "whatsapp_bot")) {
+      const [limpo] = await db.update(tenantWhatsapp).set({
+        authorized: false,
+        enabled: false,
+      }).where(eq(tenantWhatsapp.tenantId, tenant.id)).returning();
+      if (limpo) wa = limpo;
+    }
+    const authorized = Boolean(wa?.authorized);
+    const enabled = Boolean(wa?.enabled);
+    const canUse = podeUsarWhatsapp(authorized, features);
     return {
       ...tenant,
       customersCount: cli?.total ?? 0,
       appointmentsCount: age?.total ?? 0,
       admin: adm ?? null,
-      plan: plano ? { id: plano.id, name: plano.name, slug: plano.slug, features: normalizarFeatures(plano.features) } : null,
-      whatsapp: wa ?? null,
+      plan: plano ? { id: plano.id, name: plano.name, slug: plano.slug, features } : null,
+      whatsapp: wa
+        ? {
+            authorized,
+            enabled,
+            canUse,
+            phone: wa.phone,
+            mode: wa.mode,
+            blockedByPlan: false,
+          }
+        : null,
     };
   }));
 
@@ -256,10 +276,10 @@ master.post("/tenants", async (req, res) => {
       role: "admin",
     }).returning();
 
-    const feats = normalizarFeatures(plano.features);
+    // Autorização WhatsApp é sempre manual no master (plano só libera a feature).
     await tx.insert(tenantWhatsapp).values({
       tenantId: tenant.id,
-      authorized: temFeature(feats, "whatsapp_bot"),
+      authorized: false,
       enabled: false,
       mode: "rules",
       evolutionInstance: instanciaTenant(tenant.slug),
@@ -300,6 +320,19 @@ master.patch("/tenants/:id", async (req, res) => {
 
   const [tenant] = await db.update(tenants).set(patch).where(eq(tenants.id, id)).returning();
   if (!tenant) return res.status(404).json({ erro: "Negócio não encontrado." });
+
+  // Plano sem WhatsApp → revoga autorização (Basic não fica “autorizado”)
+  if (dados.planId !== undefined) {
+    const [plano] = await db.select().from(plans).where(eq(plans.id, dados.planId)).limit(1);
+    const features = normalizarFeatures(plano?.features);
+    if (!temFeature(features, "whatsapp_bot")) {
+      await db.update(tenantWhatsapp).set({
+        authorized: false,
+        enabled: false,
+      }).where(eq(tenantWhatsapp.tenantId, id));
+    }
+  }
+
   res.json(tenant);
 });
 
@@ -377,9 +410,17 @@ master.get("/whatsapp", async (_req, res) => {
   const planoPorId = new Map(planos.map((p) => [p.id, p]));
 
   const itens = await Promise.all(lista.map(async (tenant) => {
-    const cfg = await garantirWhatsapp(tenant.id, tenant.slug);
+    let cfg = await garantirWhatsapp(tenant.id, tenant.slug);
     const plano = tenant.planId ? planoPorId.get(tenant.planId) : undefined;
     const features = normalizarFeatures(plano?.features);
+    // Plano sem feature: não manter autorização “fantasma”
+    if (cfg.authorized && !temFeature(features, "whatsapp_bot")) {
+      const [limpo] = await db.update(tenantWhatsapp).set({
+        authorized: false,
+        enabled: false,
+      }).where(eq(tenantWhatsapp.tenantId, tenant.id)).returning();
+      if (limpo) cfg = limpo;
+    }
     return {
       id: tenant.id,
       name: tenant.name,
