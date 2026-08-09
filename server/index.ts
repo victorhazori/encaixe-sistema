@@ -2,9 +2,10 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import cors from "cors";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { and, asc, eq, gt, gte, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, lt, ne, or, sql } from "drizzle-orm";
+import jwt from "jsonwebtoken";
 import { z, ZodError } from "zod";
-import { autenticar, criarToken } from "./auth.js";
+import { autenticar, criarToken, type Sessao } from "./auth.js";
 import { closeDb, db } from "./db/client.js";
 import {
   appointments,
@@ -32,6 +33,7 @@ const servicoSchema = z.object({
   description: z.string().optional().nullable(),
   durationMinutes: z.number().int().min(10).max(480),
   priceCents: z.number().int().min(0),
+  icon: z.string().min(2).max(40).optional(),
   active: z.boolean().optional(),
 });
 const profissionalSchema = z.object({
@@ -52,6 +54,12 @@ const bloqueioSchema = z.object({
   endsAt: z.coerce.date(),
   reason: z.string().max(200).optional(),
 });
+const clienteAdminSchema = z.object({
+  name: z.string().min(2),
+  phone: z.string().min(8),
+  email: z.string().email().optional().nullable().or(z.literal("")),
+  active: z.boolean().optional(),
+});
 
 async function tenantPorSlug(slug: string) {
   const [tenant] = await db.select().from(tenants).where(and(eq(tenants.slug, slug), eq(tenants.active, true))).limit(1);
@@ -62,20 +70,50 @@ function dataComHora(data: string, hora: string) {
   return new Date(`${data}T${hora.slice(0, 5)}:00-03:00`);
 }
 
-async function calcularDisponibilidade(tenantId: number, professionalId: number, serviceId: number, data: string) {
-  const [servico] = await db.select().from(services).where(and(
-    eq(services.id, serviceId),
+/** Normaliza serviceIds a partir de query string (serviceIds=1,2 ou serviceId legado). */
+function parseServiceIds(query: Record<string, unknown>): number[] {
+  if (typeof query.serviceIds === "string" && query.serviceIds.trim()) {
+    return query.serviceIds.split(",").map((id) => Number(id.trim())).filter((id) => Number.isInteger(id) && id > 0);
+  }
+  if (query.serviceId != null && query.serviceId !== "") {
+    const id = Number(query.serviceId);
+    if (Number.isInteger(id) && id > 0) return [id];
+  }
+  return [];
+}
+
+async function carregarServicosValidos(tenantId: number, serviceIds: number[]) {
+  const unicos = [...new Set(serviceIds)];
+  if (!unicos.length) return [];
+  const lista = await db.select().from(services).where(and(
     eq(services.tenantId, tenantId),
     eq(services.active, true),
-  )).limit(1);
-  if (!servico) return [];
+    inArray(services.id, unicos),
+  ));
+  if (lista.length !== unicos.length) return [];
+  // Mantém a ordem solicitada
+  return unicos.map((id) => lista.find((s) => s.id === id)!);
+}
 
-  const vinculo = await db.select().from(serviceProfessionals).where(and(
+async function profissionalAtendeTodos(tenantId: number, professionalId: number, serviceIds: number[]) {
+  if (!serviceIds.length) return false;
+  const vinculos = await db.select({ serviceId: serviceProfessionals.serviceId }).from(serviceProfessionals).where(and(
     eq(serviceProfessionals.tenantId, tenantId),
     eq(serviceProfessionals.professionalId, professionalId),
-    eq(serviceProfessionals.serviceId, serviceId),
-  )).limit(1);
-  if (!vinculo.length) return [];
+    inArray(serviceProfessionals.serviceId, serviceIds),
+  ));
+  const atendidos = new Set(vinculos.map((v) => v.serviceId));
+  return serviceIds.every((id) => atendidos.has(id));
+}
+
+async function calcularDisponibilidade(tenantId: number, professionalId: number, serviceIds: number[], data: string) {
+  const listaServicos = await carregarServicosValidos(tenantId, serviceIds);
+  if (!listaServicos.length) return [];
+
+  const atende = await profissionalAtendeTodos(tenantId, professionalId, listaServicos.map((s) => s.id));
+  if (!atende) return [];
+
+  const duracaoTotal = listaServicos.reduce((soma, s) => soma + s.durationMinutes, 0);
 
   const diaSemana = new Date(`${data}T12:00:00-03:00`).getDay();
   const [jornada] = await db.select().from(workingHours).where(and(
@@ -111,12 +149,28 @@ async function calcularDisponibilidade(tenantId: number, professionalId: number,
   const slots: string[] = [];
   const abertura = dataComHora(data, jornada.startTime);
   const fechamento = dataComHora(data, jornada.endTime);
-  for (let inicio = abertura; inicio.getTime() + servico.durationMinutes * 60_000 <= fechamento.getTime(); inicio = new Date(inicio.getTime() + 15 * 60_000)) {
-    const fim = new Date(inicio.getTime() + servico.durationMinutes * 60_000);
+  for (let inicio = abertura; inicio.getTime() + duracaoTotal * 60_000 <= fechamento.getTime(); inicio = new Date(inicio.getTime() + 15 * 60_000)) {
+    const fim = new Date(inicio.getTime() + duracaoTotal * 60_000);
     const conflita = [...ocupados, ...indisponiveis].some((item) => inicio < item.endsAt && fim > item.startsAt);
     if (!conflita && inicio > new Date()) slots.push(inicio.toISOString());
   }
   return slots;
+}
+
+/** Lê JWT opcional do cliente (não falha se ausente/inválido). */
+function tentarSessaoCliente(req: Request): Sessao | undefined {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
+  const segredo = process.env.JWT_SECRET;
+  if (!token || !segredo) return undefined;
+  try {
+    return z.object({
+      userId: z.number(),
+      tenantId: z.number(),
+      role: z.enum(["admin", "staff", "customer"]),
+    }).parse(jwt.verify(token, segredo));
+  } catch {
+    return undefined;
+  }
 }
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok", produto: "Encaixe" }));
@@ -160,6 +214,7 @@ app.post("/api/auth/customer/register", async (req, res) => {
       name: dados.name,
       email: dados.email.toLowerCase(),
       phone: dados.phone,
+      active: true,
     }).returning();
     return { usuario, cliente };
   });
@@ -177,6 +232,7 @@ app.post("/api/auth/customer/login", async (req, res) => {
     eq(users.tenantId, tenant.id),
     eq(users.email, dados.email.toLowerCase()),
     eq(users.role, "customer"),
+    eq(users.active, true),
   )).limit(1);
   if (!usuario || !(await bcrypt.compare(dados.password, usuario.passwordHash))) {
     return res.status(401).json({ erro: "Credenciais inválidas." });
@@ -207,82 +263,180 @@ app.get("/api/public/:slug/services", async (req, res) => {
 app.get("/api/public/:slug/professionals", async (req, res) => {
   const tenant = await tenantPorSlug(req.params.slug);
   if (!tenant) return res.status(404).json({ erro: "Estabelecimento não encontrado." });
-  const serviceId = Number(req.query.serviceId);
-  const resultado = serviceId
-    ? await db.select({ id: professionals.id, name: professionals.name, bio: professionals.bio, avatarUrl: professionals.avatarUrl })
-      .from(professionals)
-      .innerJoin(serviceProfessionals, and(
-        eq(serviceProfessionals.professionalId, professionals.id),
-        eq(serviceProfessionals.serviceId, serviceId),
-        eq(serviceProfessionals.tenantId, tenant.id),
-      ))
-      .where(and(eq(professionals.tenantId, tenant.id), eq(professionals.active, true)))
-    : await db.select().from(professionals).where(and(eq(professionals.tenantId, tenant.id), eq(professionals.active, true)));
-  res.json(resultado);
+  const ids = parseServiceIds(req.query as Record<string, unknown>);
+  if (!ids.length) {
+    return res.json(await db.select().from(professionals).where(and(eq(professionals.tenantId, tenant.id), eq(professionals.active, true))));
+  }
+
+  // Interseção: profissionais vinculados a TODOS os serviços selecionados
+  const vinculos = await db.select({
+    professionalId: serviceProfessionals.professionalId,
+    serviceId: serviceProfessionals.serviceId,
+  }).from(serviceProfessionals).where(and(
+    eq(serviceProfessionals.tenantId, tenant.id),
+    inArray(serviceProfessionals.serviceId, ids),
+  ));
+
+  const contagem = new Map<number, Set<number>>();
+  for (const v of vinculos) {
+    if (!contagem.has(v.professionalId)) contagem.set(v.professionalId, new Set());
+    contagem.get(v.professionalId)!.add(v.serviceId);
+  }
+  const profissionaisIds = [...contagem.entries()]
+    .filter(([, set]) => ids.every((id) => set.has(id)))
+    .map(([id]) => id);
+
+  if (!profissionaisIds.length) return res.json([]);
+
+  res.json(await db.select({
+    id: professionals.id,
+    name: professionals.name,
+    bio: professionals.bio,
+    avatarUrl: professionals.avatarUrl,
+  }).from(professionals).where(and(
+    eq(professionals.tenantId, tenant.id),
+    eq(professionals.active, true),
+    inArray(professionals.id, profissionaisIds),
+  )));
 });
 
 app.get("/api/public/:slug/availability", async (req, res) => {
+  const ids = parseServiceIds(req.query as Record<string, unknown>);
   const consulta = z.object({
     professionalId: z.coerce.number().int().positive(),
-    serviceId: z.coerce.number().int().positive(),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   }).parse(req.query);
+  if (!ids.length) return res.status(400).json({ erro: "Informe serviceIds ou serviceId." });
   const tenant = await tenantPorSlug(req.params.slug);
   if (!tenant) return res.status(404).json({ erro: "Estabelecimento não encontrado." });
-  res.json(await calcularDisponibilidade(tenant.id, consulta.professionalId, consulta.serviceId, consulta.date));
+  res.json(await calcularDisponibilidade(tenant.id, consulta.professionalId, ids, consulta.date));
+});
+
+app.get("/api/public/:slug/availability-month", async (req, res) => {
+  const ids = parseServiceIds(req.query as Record<string, unknown>);
+  const consulta = z.object({
+    professionalId: z.coerce.number().int().positive(),
+    year: z.coerce.number().int().min(2000).max(2100),
+    month: z.coerce.number().int().min(1).max(12),
+  }).parse(req.query);
+  if (!ids.length) return res.status(400).json({ erro: "Informe serviceIds ou serviceId." });
+  const tenant = await tenantPorSlug(req.params.slug);
+  if (!tenant) return res.status(404).json({ erro: "Estabelecimento não encontrado." });
+
+  const diasNoMes = new Date(consulta.year, consulta.month, 0).getDate();
+  const mapa: Record<string, number> = {};
+  const hojeStr = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(new Date());
+
+  for (let dia = 1; dia <= diasNoMes; dia++) {
+    const data = `${consulta.year}-${String(consulta.month).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+    if (data < hojeStr) {
+      mapa[data] = 0;
+      continue;
+    }
+    const slots = await calcularDisponibilidade(tenant.id, consulta.professionalId, ids, data);
+    mapa[data] = slots.length;
+  }
+  res.json(mapa);
 });
 
 app.post("/api/public/:slug/appointments", async (req, res) => {
-  const dados = z.object({
-    serviceId: z.number().int().positive(),
+  const corpo = z.object({
+    serviceId: z.number().int().positive().optional(),
+    serviceIds: z.array(z.number().int().positive()).min(1).optional(),
     professionalId: z.number().int().positive(),
     startsAt: z.coerce.date(),
     customer: z.object({
       name: z.string().min(2),
       phone: z.string().min(8),
       email: z.string().email().optional().or(z.literal("")),
-    }),
+    }).optional(),
     notes: z.string().max(500).optional(),
   }).parse(req.body);
+
+  const serviceIds = corpo.serviceIds?.length
+    ? [...new Set(corpo.serviceIds)]
+    : corpo.serviceId
+      ? [corpo.serviceId]
+      : [];
+  if (!serviceIds.length) return res.status(400).json({ erro: "Informe serviceIds ou serviceId." });
+
   const tenant = await tenantPorSlug(req.params.slug);
   if (!tenant) return res.status(404).json({ erro: "Estabelecimento não encontrado." });
-  const data = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(dados.startsAt);
-  const slots = await calcularDisponibilidade(tenant.id, dados.professionalId, dados.serviceId, data);
-  if (!slots.includes(dados.startsAt.toISOString())) return res.status(409).json({ erro: "Horário não está mais disponível." });
+
+  const sessao = tentarSessaoCliente(req);
+  let clienteLogado: typeof customers.$inferSelect | undefined;
+  if (sessao?.role === "customer" && sessao.tenantId === tenant.id) {
+    const [cadastro] = await db.select().from(customers).where(and(
+      eq(customers.userId, sessao.userId),
+      eq(customers.tenantId, tenant.id),
+    )).limit(1);
+    clienteLogado = cadastro;
+  }
+
+  if (!clienteLogado && !corpo.customer) {
+    return res.status(400).json({ erro: "Dados do cliente são obrigatórios." });
+  }
+
+  const data = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone }).format(corpo.startsAt);
+  const slots = await calcularDisponibilidade(tenant.id, corpo.professionalId, serviceIds, data);
+  if (!slots.includes(corpo.startsAt.toISOString())) return res.status(409).json({ erro: "Horário não está mais disponível." });
 
   const agendamento = await db.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(${tenant.id}, ${dados.professionalId})`);
-    const [servico] = await tx.select().from(services).where(and(
-      eq(services.id, dados.serviceId),
+    await tx.execute(sql`select pg_advisory_xact_lock(${tenant.id}, ${corpo.professionalId})`);
+    const listaServicos = await tx.select().from(services).where(and(
       eq(services.tenantId, tenant.id),
-    )).limit(1);
-    if (!servico) throw new Error("SERVICO_INVALIDO");
-    const endsAt = new Date(dados.startsAt.getTime() + servico.durationMinutes * 60_000);
+      inArray(services.id, serviceIds),
+      eq(services.active, true),
+    ));
+    if (listaServicos.length !== serviceIds.length) throw new Error("SERVICO_INVALIDO");
+    const ordenados = serviceIds.map((id) => listaServicos.find((s) => s.id === id)!);
+    const duracaoTotal = ordenados.reduce((soma, s) => soma + s.durationMinutes, 0);
+    const endsAt = new Date(corpo.startsAt.getTime() + duracaoTotal * 60_000);
+
     const conflito = await tx.select({ id: appointments.id }).from(appointments).where(and(
       eq(appointments.tenantId, tenant.id),
-      eq(appointments.professionalId, dados.professionalId),
+      eq(appointments.professionalId, corpo.professionalId),
       ne(appointments.status, "cancelled"),
       lt(appointments.startsAt, endsAt),
-      gt(appointments.endsAt, dados.startsAt),
+      gt(appointments.endsAt, corpo.startsAt),
     )).limit(1);
     if (conflito.length) throw new Error("HORARIO_OCUPADO");
-    const [cliente] = await tx.insert(customers).values({
-      tenantId: tenant.id,
-      name: dados.customer.name,
-      phone: dados.customer.phone,
-      email: dados.customer.email || null,
-    }).onConflictDoUpdate({
-      target: [customers.tenantId, customers.phone],
-      set: { name: dados.customer.name, email: dados.customer.email || null },
-    }).returning();
+
+    let cliente = clienteLogado;
+    if (!cliente) {
+      const dadosCliente = corpo.customer!;
+      const [upsert] = await tx.insert(customers).values({
+        tenantId: tenant.id,
+        name: dadosCliente.name,
+        phone: dadosCliente.phone,
+        email: dadosCliente.email || null,
+        active: true,
+      }).onConflictDoUpdate({
+        target: [customers.tenantId, customers.phone],
+        set: {
+          name: dadosCliente.name,
+          email: dadosCliente.email || null,
+          active: true,
+        },
+      }).returning();
+      cliente = upsert;
+    }
+
+    const nomesExtras = ordenados.slice(1).map((s) => s.name);
+    const notasServicos = nomesExtras.length
+      ? `Serviços extras: ${nomesExtras.join(", ")}`
+      : undefined;
+    const notes = [corpo.notes, notasServicos].filter(Boolean).join("\n") || null;
+
     const [novo] = await tx.insert(appointments).values({
       tenantId: tenant.id,
       customerId: cliente.id,
-      professionalId: dados.professionalId,
-      serviceId: dados.serviceId,
-      startsAt: dados.startsAt,
+      professionalId: corpo.professionalId,
+      serviceId: ordenados[0].id,
+      extraServiceIds: ordenados.slice(1).map((s) => s.id),
+      startsAt: corpo.startsAt,
       endsAt,
-      notes: dados.notes,
+      notes,
     }).returning();
     return novo;
   });
@@ -325,6 +479,53 @@ admin.get("/dashboard/day", async (req, res) => {
     lt(appointments.startsAt, fim),
   ));
   res.json(metricas);
+});
+
+admin.get("/customers", async (req, res) => {
+  res.json(await db.select().from(customers).where(eq(customers.tenantId, req.tenantId!)).orderBy(asc(customers.name)));
+});
+
+admin.post("/customers", async (req, res) => {
+  const dados = clienteAdminSchema.parse(req.body);
+  const [item] = await db.insert(customers).values({
+    tenantId: req.tenantId!,
+    name: dados.name,
+    phone: dados.phone,
+    email: dados.email || null,
+    active: true,
+  }).returning();
+  res.status(201).json(item);
+});
+
+admin.put("/customers/:id", async (req, res) => {
+  const dados = clienteAdminSchema.partial().parse(req.body);
+  const [item] = await db.update(customers).set({
+    ...(dados.name !== undefined ? { name: dados.name } : {}),
+    ...(dados.phone !== undefined ? { phone: dados.phone } : {}),
+    ...(dados.email !== undefined ? { email: dados.email || null } : {}),
+    ...(dados.active !== undefined ? { active: dados.active } : {}),
+  }).where(and(eq(customers.id, Number(req.params.id)), eq(customers.tenantId, req.tenantId!))).returning();
+  if (!item) return res.status(404).json({ erro: "Cliente não encontrado." });
+  res.json(item);
+});
+
+admin.delete("/customers/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const [cliente] = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.tenantId, req.tenantId!))).limit(1);
+  if (!cliente) return res.status(404).json({ erro: "Cliente não encontrado." });
+
+  const [temAgenda] = await db.select({ id: appointments.id }).from(appointments).where(and(
+    eq(appointments.tenantId, req.tenantId!),
+    eq(appointments.customerId, id),
+  )).limit(1);
+
+  if (temAgenda) {
+    await db.update(customers).set({ active: false }).where(and(eq(customers.id, id), eq(customers.tenantId, req.tenantId!)));
+    return res.json({ inactivated: true });
+  }
+
+  await db.delete(customers).where(and(eq(customers.id, id), eq(customers.tenantId, req.tenantId!)));
+  return res.json({ deleted: true });
 });
 
 admin.get("/services", async (req, res) => res.json(await db.select().from(services).where(eq(services.tenantId, req.tenantId!))));
@@ -436,15 +637,45 @@ app.use("/api/admin", admin);
 
 const cliente = express.Router();
 cliente.use(autenticar(["customer"]));
+
+cliente.get("/me", async (req, res) => {
+  const [cadastro] = await db.select({
+    name: customers.name,
+    email: customers.email,
+    phone: customers.phone,
+  }).from(customers).where(and(
+    eq(customers.userId, req.sessao!.userId),
+    eq(customers.tenantId, req.tenantId!),
+  )).limit(1);
+  if (!cadastro) {
+    const [usuario] = await db.select({ name: users.name, email: users.email }).from(users).where(eq(users.id, req.sessao!.userId)).limit(1);
+    if (!usuario) return res.status(404).json({ erro: "Cliente não encontrado." });
+    return res.json({ name: usuario.name, email: usuario.email, phone: "" });
+  }
+  res.json(cadastro);
+});
+
 cliente.get("/appointments", async (req, res) => {
   const [cadastro] = await db.select().from(customers).where(and(eq(customers.userId, req.sessao!.userId), eq(customers.tenantId, req.tenantId!))).limit(1);
   if (!cadastro) return res.json([]);
-  res.json(await db.select().from(appointments).where(and(
-    eq(appointments.tenantId, req.tenantId!),
-    eq(appointments.customerId, cadastro.id),
-    gte(appointments.startsAt, new Date()),
-  )).orderBy(asc(appointments.startsAt)));
+  res.json(await db.select({
+    id: appointments.id,
+    startsAt: appointments.startsAt,
+    endsAt: appointments.endsAt,
+    status: appointments.status,
+    serviceName: services.name,
+    professionalName: professionals.name,
+    notes: appointments.notes,
+  }).from(appointments)
+    .innerJoin(services, eq(services.id, appointments.serviceId))
+    .innerJoin(professionals, eq(professionals.id, appointments.professionalId))
+    .where(and(
+      eq(appointments.tenantId, req.tenantId!),
+      eq(appointments.customerId, cadastro.id),
+      gte(appointments.startsAt, new Date()),
+    )).orderBy(asc(appointments.startsAt)));
 });
+
 cliente.patch("/appointments/:id/cancel", async (req, res) => {
   const [cadastro] = await db.select().from(customers).where(and(eq(customers.userId, req.sessao!.userId), eq(customers.tenantId, req.tenantId!))).limit(1);
   if (!cadastro) return res.status(404).json({ erro: "Cliente não encontrado." });

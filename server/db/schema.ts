@@ -70,6 +70,7 @@ export const customers = pgTable(
     name: varchar("name", { length: 160 }).notNull(),
     email: varchar("email", { length: 200 }),
     phone: varchar("phone", { length: 30 }).notNull(),
+    active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("customers_tenant_phone_idx").on(table.tenantId, table.phone)],
@@ -92,6 +93,7 @@ export const services = pgTable("services", {
   description: text("description"),
   durationMinutes: integer("duration_minutes").notNull(),
   priceCents: integer("price_cents").notNull(),
+  icon: varchar("icon", { length: 40 }).notNull().default("scissors"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -136,6 +138,7 @@ export const appointments = pgTable(
     customerId: integer("customer_id").notNull().references(() => customers.id),
     professionalId: integer("professional_id").notNull().references(() => professionals.id),
     serviceId: integer("service_id").notNull().references(() => services.id),
+    extraServiceIds: jsonb("extra_service_ids").$type<number[]>().notNull().default([]),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
     status: appointmentStatus("status").notNull().default("confirmed"),

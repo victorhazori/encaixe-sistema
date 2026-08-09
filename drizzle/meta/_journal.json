@@ -8,6 +8,13 @@
       "when": 1786238802886,
       "tag": "0000_glossy_kinsey_walden",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786319640000,
+      "tag": "0001_encaixe_ux",
+      "breakpoints": true
     }
   ]
 }

@@ -69,11 +69,20 @@ async function executarSeed() {
     listaServicos = await db
       .insert(services)
       .values([
-        { tenantId: tenant.id, name: "Corte", description: "Corte completo", durationMinutes: 45, priceCents: 4500 },
-        { tenantId: tenant.id, name: "Barba", description: "Barba com toalha quente", durationMinutes: 30, priceCents: 3500 },
-        { tenantId: tenant.id, name: "Corte + Barba", description: "Experiência completa", durationMinutes: 75, priceCents: 7500 },
+        { tenantId: tenant.id, name: "Corte", description: "Corte completo", durationMinutes: 45, priceCents: 4500, icon: "scissors" },
+        { tenantId: tenant.id, name: "Barba", description: "Barba com toalha quente", durationMinutes: 30, priceCents: 3500, icon: "sparkles" },
+        { tenantId: tenant.id, name: "Corte + Barba", description: "Experiência completa", durationMinutes: 75, priceCents: 7500, icon: "razor" },
       ])
       .returning();
+  } else {
+    // Atualiza ícones demo se ainda estiverem no padrão
+    const icones: Record<string, string> = { Corte: "scissors", Barba: "sparkles", "Corte + Barba": "razor" };
+    for (const servico of listaServicos) {
+      const icon = icones[servico.name];
+      if (icon) {
+        await db.update(services).set({ icon }).where(eq(services.id, servico.id));
+      }
+    }
   }
 
   await db
