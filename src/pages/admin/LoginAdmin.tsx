@@ -1,52 +1,96 @@
 import { useState, type CSSProperties, type FormEvent } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Building2 } from "lucide-react";
 import { Aviso, Marca } from "../../components/ui";
 import { api, type Tenant } from "../../lib/api";
 import { useTenantTheme } from "../../lib/theme";
+import "../../styles/admin.css";
 
 export function LoginAdmin({ aoEntrar }: { aoEntrar: (token: string, tenant: Tenant) => void }) {
   const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
   const [slug, setSlug] = useState("barbearia-demo");
   const tenantTema = useTenantTheme(slug);
+  const corMarca = tenantTema?.primaryColor ?? "var(--cor-marca)";
 
   async function entrar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
+    setErro("");
+    setCarregando(true);
     const form = new FormData(evento.currentTarget);
     try {
       const resultado = await api<{ token: string; tenant: Tenant }>("/auth/staff/login", {
         method: "POST",
-        body: JSON.stringify({ slug: form.get("slug"), email: form.get("email"), password: form.get("password") }),
+        body: JSON.stringify({
+          slug: form.get("slug"),
+          email: form.get("email"),
+          password: form.get("password"),
+        }),
       });
       document.documentElement.style.setProperty("--cor-marca", resultado.tenant.primaryColor);
       aoEntrar(resultado.token, resultado.tenant);
-    } catch (e) { setErro(e instanceof Error ? e.message : "Falha no acesso."); }
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Falha no acesso.");
+    } finally {
+      setCarregando(false);
+    }
   }
+
   return (
-    <main className="login" style={{ "--cor-marca": tenantTema?.primaryColor ?? "var(--cor-marca)" } as CSSProperties}>
-      <section className="login-marca">
-        <img className="login-marca-foto" src="/images/ambiente.jpg" alt="Ambiente acolhedor da barbearia" />
+    <main className="admin-login" style={{ "--cor-marca": corMarca } as CSSProperties}>
+      <section className="admin-login__brand">
+        <img className="admin-login__photo" src="/images/ambiente.jpg" alt="Ambiente do negócio" />
         <Marca />
-        <h1>A agenda do seu negócio, sem ruído.</h1>
+        <h1>
+          A agenda do seu negócio, <em>sem ruído.</em>
+        </h1>
         <p>Menos tempo organizando. Mais tempo atendendo.</p>
+        {tenantTema && (
+          <div className="admin-login__tenant-chip">
+            <span className="admin-login__tenant-dot" aria-hidden />
+            {tenantTema.name}
+          </div>
+        )}
       </section>
-      <form className="cartao-login" onSubmit={entrar}>
-        <span className="sobretitulo">Painel administrativo</span>
-        <h2>Boas-vindas</h2>
-        <label>
-          Identificador do negócio
-          <input
-            name="slug"
-            value={slug}
-            required
-            onChange={(e) => setSlug(e.target.value.trim())}
-            onBlur={(e) => setSlug(e.target.value.trim() || "barbearia-demo")}
-          />
-        </label>
-        <label>E-mail<input name="email" type="email" defaultValue="admin@demo.encaixe" required /></label>
-        <label>Senha<input name="password" type="password" defaultValue="Demo@1234" required /></label>
-        <button className="botao-principal">Entrar <ArrowRight size={18} /></button>
-        {erro && <Aviso erro>{erro}</Aviso>}
-      </form>
+
+      <div className="admin-login__panel">
+        <form className="admin-login__card" onSubmit={entrar}>
+          <span className="sobretitulo">Painel administrativo</span>
+          <h2>Boas-vindas</h2>
+          <p>Entre com o identificador e as credenciais da equipe.</p>
+
+          <label>
+            Identificador do negócio
+            <input
+              name="slug"
+              value={slug}
+              required
+              autoComplete="organization"
+              onChange={(e) => setSlug(e.target.value.trim())}
+              onBlur={(e) => setSlug(e.target.value.trim() || "barbearia-demo")}
+            />
+          </label>
+          <label>
+            E-mail
+            <input name="email" type="email" defaultValue="admin@demo.encaixe" required autoComplete="username" />
+          </label>
+          <label>
+            Senha
+            <input name="password" type="password" defaultValue="Demo@1234" required autoComplete="current-password" />
+          </label>
+
+          <button className="botao-principal" disabled={carregando}>
+            {carregando ? "Entrando…" : "Entrar"}
+            {!carregando && <ArrowRight size={18} />}
+          </button>
+
+          {erro && <Aviso erro>{erro}</Aviso>}
+
+          <p className="admin-login__hint">
+            <Building2 size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+            A cor da marca acompanha o identificador informado.
+          </p>
+        </form>
+      </div>
     </main>
   );
 }
