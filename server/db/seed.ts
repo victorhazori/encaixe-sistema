@@ -1,7 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
-import { db, pool } from "./client.js";
+import { closeDb, db, usingPglite } from "./client.js";
 import {
   loyaltyRules,
   plans,
@@ -14,8 +14,8 @@ import {
 } from "./schema.js";
 
 async function executarSeed() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL não definida. Inicie o PostgreSQL e configure o arquivo .env.");
+  if (!usingPglite && !process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL não definida. Use pglite no .env ou um PostgreSQL.");
   }
 
   const [plano] = await db
@@ -118,4 +118,4 @@ executarSeed()
     console.error("Falha ao executar seed:", erro instanceof Error ? erro.message : erro);
     process.exitCode = 1;
   })
-  .finally(() => pool.end());
+  .finally(() => closeDb());

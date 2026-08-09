@@ -5,7 +5,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { and, asc, eq, gt, gte, lt, ne, or, sql } from "drizzle-orm";
 import { z, ZodError } from "zod";
 import { autenticar, criarToken } from "./auth.js";
-import { db, pool } from "./db/client.js";
+import { closeDb, db } from "./db/client.js";
 import {
   appointments,
   blocks,
@@ -477,7 +477,7 @@ const servidor = app.listen(porta, "0.0.0.0", () => console.log(`API Encaixe dis
 
 async function encerrar() {
   servidor.close();
-  await pool.end();
+  await closeDb();
 }
 process.on("SIGTERM", encerrar);
 process.on("SIGINT", encerrar);

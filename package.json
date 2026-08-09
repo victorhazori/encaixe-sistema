@@ -9,10 +9,11 @@
     "build": "tsc -b && vite build",
     "start": "tsx server/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx server/db/migrate.ts",
     "db:seed": "tsx server/db/seed.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "bcryptjs": "latest",
     "cors": "latest",
     "dotenv": "latest",

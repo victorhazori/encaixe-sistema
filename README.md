@@ -13,11 +13,12 @@ Produção planejada: [encaixe.victorhazori.com.br](https://encaixe.victorhazori
 
 ## Rodar localmente
 
-Requisitos: Node.js 22 ou superior, npm e Docker.
+Requisitos: Node.js 22 ou superior e npm.
+
+Por padrão o `.env` usa **PGlite** (PostgreSQL embutido no Node): **não precisa** de Docker nem de PostgreSQL instalado. Os dados ficam em `.data/pglite`.
 
 ```bash
 cp .env.example .env
-docker compose up -d
 npm install
 npm run db:migrate
 npm run db:seed
@@ -25,6 +26,16 @@ npm run dev
 ```
 
 No Windows PowerShell, use `Copy-Item .env.example .env` no lugar de `cp`.
+
+Opcional — Postgres de verdade via Docker:
+
+```bash
+# no .env: DATABASE_URL=postgresql://encaixe:encaixe_local@localhost:5432/encaixe
+docker compose up -d
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
 
 Endereços:
 
