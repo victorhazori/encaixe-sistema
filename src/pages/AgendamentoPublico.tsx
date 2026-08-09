@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { ArrowRight, Check, LogOut, Sparkles } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Clock3, LogOut, MapPin } from "lucide-react";
 import { Link, useParams } from "react-router";
+import { TemaToggle } from "../components/TemaToggle";
 import { Aviso, CalendarioMes, Marca, Progresso } from "../components/ui";
 import { api, dataHora, moeda, type PerfilCliente, type Professional, type Service, type Tenant } from "../lib/api";
 import { iconeServico } from "../lib/icons";
 import { useTenantTheme } from "../lib/theme";
+import "../styles/public.css";
 
 export function AgendamentoPublico() {
   const { slug = "" } = useParams();
@@ -25,6 +27,7 @@ export function AgendamentoPublico() {
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
   const [carregandoMes, setCarregandoMes] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   useTenantTheme(slug, tenant?.primaryColor);
 
@@ -99,6 +102,7 @@ export function AgendamentoPublico() {
       return existe ? atuais.filter((s) => s.id !== item.id) : [...atuais, item];
     });
     setMensagem("");
+    setErro("");
   }
 
   function sairCliente() {
@@ -107,9 +111,20 @@ export function AgendamentoPublico() {
     setPerfil(undefined);
   }
 
+  function reiniciar() {
+    setMensagem("");
+    setErro("");
+    setSelecionados([]);
+    setProfissional(undefined);
+    setData("");
+    setSlot("");
+    setSlots([]);
+  }
+
   async function confirmar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
     setErro("");
+    setEnviando(true);
     const form = new FormData(evento.currentTarget);
     try {
       const corpo: Record<string, unknown> = {
@@ -132,31 +147,52 @@ export function AgendamentoPublico() {
       setSlot("");
       setSelecionados([]);
       setProfissional(undefined);
+      setData("");
+      setSlots([]);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Falha ao agendar.");
+    } finally {
+      setEnviando(false);
     }
   }
 
-  if (erro && !tenant) return <main className="centro"><Marca /><Aviso erro>{erro}</Aviso></main>;
-  if (!tenant) return <main className="centro">Carregando agenda…</main>;
+  if (erro && !tenant) {
+    return (
+      <main className="centro">
+        <Marca />
+        <Aviso erro>{erro}</Aviso>
+      </main>
+    );
+  }
+
+  if (!tenant) {
+    return <main className="centro">Carregando agenda…</main>;
+  }
+
+  const dataLabel = data
+    ? new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${data}T12:00:00`))
+    : "";
 
   return (
-    <div className="publico" style={{ "--cor-marca": tenant.primaryColor } as CSSProperties}>
+    <div className="publico publico-booking" style={{ "--cor-marca": tenant.primaryColor } as CSSProperties}>
       <header className="cabecalho-publico cabecalho-auth">
         <div className="cabecalho-marca">
           {tenant.logoUrl
             ? <img src={tenant.logoUrl} alt={tenant.name} className="logo-tenant" />
-            : <Marca />}
+            : <Marca compacta />}
           <div className="cabecalho-loja">
             <strong>{tenant.name}</strong>
             {tenant.address && <small>{tenant.address}</small>}
           </div>
         </div>
         <div className="auth-area">
+          <TemaToggle />
           {tokenCliente && perfil ? (
             <>
               <span className="ola">Olá, {perfil.name.split(" ")[0]}</span>
-              <button type="button" className="link-sutil" onClick={sairCliente}><LogOut size={16} /> Sair</button>
+              <button type="button" className="link-sutil" onClick={sairCliente}>
+                <LogOut size={16} /> Sair
+              </button>
             </>
           ) : (
             <Link to={`/cliente/${slug}`} className="link-sutil">Entrar</Link>
@@ -165,141 +201,249 @@ export function AgendamentoPublico() {
         </div>
       </header>
 
-      <main className="reserva" id="agendar">
-        <section className="apresentacao">
-          <span className="sobretitulo"><Sparkles size={14} /> Agenda aberta</span>
-          <h1>Seu tempo, bem <em>encaixado.</em></h1>
-          <p>Combine serviços, escolha quem atende e reserve no calendário — sem volta e meia no telefone.</p>
-          <div className="hero-foto">
-            <img src="/images/hero-barbearia.jpg" alt="Interior da barbearia com cadeiras e iluminação acolhedora" />
-            <div className="hero-foto-overlay">{tenant.name}</div>
+      <section className="hero-publico" aria-label="Apresentação">
+        <div className="hero-publico-media">
+          <img src={tenant.heroImageUrl || "/images/hero-barbearia.jpg"} alt="" />
+          <div className="hero-publico-veil" aria-hidden="true" />
+        </div>
+        <div className="hero-publico-conteudo">
+          <p className="hero-marca">{tenant.name}</p>
+          <h1>Reserve com calma. Chegue no horário certo.</h1>
+          <p>
+            Escolha serviços, quem te atende e o melhor horário — tudo online, sem troca de mensagens.
+          </p>
+          <div className="hero-acoes">
+            <a href="#agendar" className="botao-principal">
+              Agendar horário <ArrowRight size={18} />
+            </a>
+            {(tenant.address || tenant.phone) && (
+              <span className="hero-meta">
+                {tenant.address ? (
+                  <><MapPin size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />{tenant.address}</>
+                ) : tenant.phone}
+              </span>
+            )}
           </div>
-          <div className="galeria-fotos">
-            <figure>
-              <img src="/images/servicos.jpg" alt="Detalhe de serviços de corte e barba" />
-            </figure>
-            <figure>
-              <img src="/images/ambiente.jpg" alt="Ambiente da barbearia" />
-            </figure>
-            <figure>
-              <img src="/images/atendimento.jpg" alt="Atendimento personalizado ao cliente" />
-            </figure>
-          </div>
-          <div className="estabelecimento">
-            <div className="avatar-loja">{tenant.name.charAt(0)}</div>
-            <div>
-              <strong>{tenant.name}</strong>
-              <small>{tenant.phone || "Agendamento online"}</small>
-            </div>
-          </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="painel-reserva">
+      <div className="galeria-publico" aria-label="Ambiente e atendimento">
+        {(tenant.galleryUrls?.length
+          ? tenant.galleryUrls
+          : ["/images/servicos.jpg", "/images/ambiente.jpg", "/images/atendimento.jpg"]
+        ).slice(0, 3).map((src, indice) => (
+          <figure key={`${src}-${indice}`}>
+            <img src={src} alt={`Ambiente e atendimento — foto ${indice + 1}`} />
+          </figure>
+        ))}
+      </div>
+
+      <main className="reserva" id="agendar">
+        <section className="painel-reserva" aria-labelledby="titulo-reserva">
+          <div className="secao-titulo">
+            <div className="passo"><b>AGENDA</b><span id="titulo-reserva">Monte seu horário</span></div>
+            <p>Quatro passos simples. Você pode combinar mais de um serviço na mesma visita.</p>
+          </div>
+
           <Progresso passo={passo} />
 
-          <div className={`passo-bloco ${passo === 1 ? "visivel" : ""}`}>
-            <div className="passo"><b>01</b><span>Escolha os serviços</span></div>
-            <div className="grade-opcoes">
-              {servicos.map((item) => {
-                const Icone = iconeServico(item.icon);
-                const ativo = selecionados.some((s) => s.id === item.id);
-                return (
-                  <button
-                    type="button"
-                    className={`servico-card ${ativo ? "ativo" : ""}`}
-                    onClick={() => alternarServico(item)}
-                    key={item.id}
-                  >
-                    <span className="servico-icone"><Icone size={20} /></span>
-                    <span>
-                      <strong>{item.name}</strong>
-                      <small>{item.durationMinutes} min · {moeda(item.priceCents)}</small>
-                    </span>
-                    {ativo && <Check className="check-servico" size={16} />}
-                  </button>
-                );
-              })}
+          {mensagem ? (
+            <div className="sucesso-agendamento passo-bloco">
+              <div className="icone-sucesso" aria-hidden="true"><CheckCircle2 size={28} /></div>
+              <h2>Horário confirmado</h2>
+              <p>{mensagem}</p>
+              <button type="button" className="botao-principal" onClick={reiniciar}>
+                Fazer outro agendamento
+              </button>
             </div>
-          </div>
-
-          {selecionados.length > 0 && (
-            <div className="passo-bloco visivel">
-              <div className="passo"><b>02</b><span>Escolha o profissional</span></div>
-              <div className="grade-opcoes">
-                {profissionais.map((item) => (
-                  <button
-                    type="button"
-                    className={`cartao-opcao ${profissional?.id === item.id ? "ativo" : ""}`}
-                    onClick={() => { setProfissional(item); setData(""); setSlot(""); }}
-                    key={item.id}
-                  >
-                    <div className="avatar">{item.name.charAt(0)}</div>
-                    <span><strong>{item.name}</strong><small>{item.bio}</small></span>
-                  </button>
-                ))}
-                {!profissionais.length && <small className="hint">Nenhum profissional atende todos os serviços selecionados.</small>}
-              </div>
-            </div>
-          )}
-
-          {profissional && (
-            <div className="passo-bloco visivel">
-              <div className="passo"><b>03</b><span>Escolha data e horário</span></div>
-              {carregandoMes && <small className="hint">Carregando disponibilidade…</small>}
-              <div className="agenda-quando">
-                <CalendarioMes
-                  ano={ano}
-                  mes={mes}
-                  selecionado={data}
-                  disponibilidade={disponibilidadeMes}
-                  onMudarMes={(a, m) => { setAno(a); setMes(m); setData(""); }}
-                  onSelecionar={setData}
-                />
-                {data && (
-                  <div className="horarios">
-                    {slots.map((hora) => (
-                      <button type="button" className={slot === hora ? "ativo" : ""} onClick={() => setSlot(hora)} key={hora}>
-                        {new Date(hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+          ) : (
+            <>
+              <div className="passo-bloco" key="passo-servicos">
+                <div className="secao-titulo">
+                  <div className="passo"><b>01</b><span>Escolha os serviços</span></div>
+                  <p>Toque para selecionar. Dá para combinar corte, barba e mais.</p>
+                </div>
+                <div className="grade-opcoes" role="group" aria-label="Serviços">
+                  {servicos.map((item) => {
+                    const Icone = iconeServico(item.icon);
+                    const ativo = selecionados.some((s) => s.id === item.id);
+                    return (
+                      <button
+                        type="button"
+                        className={`servico-card ${ativo ? "ativo" : ""}`}
+                        onClick={() => alternarServico(item)}
+                        key={item.id}
+                        aria-pressed={ativo}
+                      >
+                        <span className="servico-icone"><Icone size={20} /></span>
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>{item.durationMinutes} min · {moeda(item.priceCents)}</small>
+                        </span>
+                        {ativo && <Check className="check-servico" size={16} aria-hidden="true" />}
                       </button>
-                    ))}
-                    {!slots.length && <small>Nenhum horário disponível nesta data.</small>}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
 
-          {slot && !mensagem && (
-            <form className="formulario passo-bloco visivel" onSubmit={confirmar}>
-              <div className="passo"><b>04</b><span>Confirmar</span></div>
-              <div className="resumo-confirmacao">
-                <p><strong>{selecionados.map((s) => s.name).join(" + ")}</strong></p>
-                <small>{profissional!.name} · {dataHora(slot)} · {totalDuracao} min · {moeda(totalPreco)}</small>
-              </div>
-              {perfil ? (
-                <p className="hint-logado">Agendando como <strong>{perfil.name}</strong> ({perfil.phone})</p>
-              ) : (
-                <>
-                  <label>Nome<input name="name" required minLength={2} /></label>
-                  <label>Telefone<input name="phone" required minLength={8} placeholder="(00) 00000-0000" /></label>
-                  <label>E-mail<input name="email" type="email" /></label>
-                </>
+              {selecionados.length > 0 && (
+                <div className="passo-bloco" key="passo-profissionais">
+                  <div className="secao-titulo">
+                    <div className="passo"><b>02</b><span>Escolha o profissional</span></div>
+                    <p>Quem combina com o seu estilo — e com os serviços escolhidos.</p>
+                  </div>
+                  <div className="grade-profissionais" role="group" aria-label="Profissionais">
+                    {profissionais.map((item) => {
+                      const ativo = profissional?.id === item.id;
+                      return (
+                        <button
+                          type="button"
+                          className={`profissional-card ${ativo ? "ativo" : ""}`}
+                          onClick={() => { setProfissional(item); setData(""); setSlot(""); setMensagem(""); }}
+                          key={item.id}
+                          aria-pressed={ativo}
+                        >
+                          {item.avatarUrl ? (
+                            <img src={item.avatarUrl} alt="" className="profissional-avatar" />
+                          ) : (
+                            <span className="profissional-avatar" aria-hidden="true">{item.name.charAt(0)}</span>
+                          )}
+                          <span>
+                            <strong>{item.name}</strong>
+                            <small>{item.bio || "Pronto para te atender"}</small>
+                          </span>
+                          {ativo && <Check className="profissional-check" size={16} aria-hidden="true" />}
+                        </button>
+                      );
+                    })}
+                    {!profissionais.length && (
+                      <small className="hint">Nenhum profissional atende todos os serviços selecionados. Remova um serviço e tente de novo.</small>
+                    )}
+                  </div>
+                </div>
               )}
-              <button type="submit" className="botao-principal">Confirmar agendamento <ArrowRight size={18} /></button>
-            </form>
+
+              {profissional && (
+                <div className="passo-bloco" key="passo-data">
+                  <div className="secao-titulo">
+                    <div className="passo"><b>03</b><span>Escolha data e horário</span></div>
+                    <p>Dias destacados têm vagas. Depois, escolha o horário que funciona para você.</p>
+                  </div>
+                  {carregandoMes && <small className="hint">Carregando disponibilidade…</small>}
+                  <div className="agenda-quando">
+                    <CalendarioMes
+                      ano={ano}
+                      mes={mes}
+                      selecionado={data}
+                      disponibilidade={disponibilidadeMes}
+                      onMudarMes={(a, m) => { setAno(a); setMes(m); setData(""); }}
+                      onSelecionar={setData}
+                    />
+                    {data && (
+                      <div className="horarios" role="group" aria-label={`Horários em ${dataLabel}`}>
+                        <p className="horarios-titulo">
+                          <Clock3 size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />
+                          {dataLabel}
+                        </p>
+                        {slots.map((hora) => (
+                          <button
+                            type="button"
+                            className={slot === hora ? "ativo" : ""}
+                            onClick={() => setSlot(hora)}
+                            key={hora}
+                            aria-pressed={slot === hora}
+                          >
+                            {new Date(hora).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </button>
+                        ))}
+                        {!slots.length && <small>Nenhum horário disponível nesta data.</small>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {slot && (
+                <form className="formulario passo-bloco confirmacao-elegante" onSubmit={confirmar} key="passo-confirmar">
+                  <div className="secao-titulo">
+                    <div className="passo"><b>04</b><span>Confirmar agendamento</span></div>
+                    <p>Revise os detalhes e confirme — a gente cuida do resto.</p>
+                  </div>
+
+                  <div className="resumo-confirmacao">
+                    <div className="resumo-linha">
+                      <span>Serviços</span>
+                      <strong>{selecionados.map((s) => s.name).join(" + ")}</strong>
+                    </div>
+                    <div className="resumo-linha">
+                      <span>Profissional</span>
+                      <strong>{profissional!.name}</strong>
+                    </div>
+                    <div className="resumo-linha">
+                      <span>Quando</span>
+                      <strong>{dataHora(slot)}</strong>
+                    </div>
+                    <div className="resumo-linha resumo-total">
+                      <span>{totalDuracao} min</span>
+                      <strong>{moeda(totalPreco)}</strong>
+                    </div>
+                  </div>
+
+                  {perfil ? (
+                    <div className="hint-logado">
+                      <span className="avatar" aria-hidden="true">{perfil.name.charAt(0)}</span>
+                      <div>
+                        <strong>Agendando como {perfil.name}</strong>
+                        <small>{perfil.phone}{perfil.email ? ` · ${perfil.email}` : ""}</small>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <label>
+                        Nome
+                        <input name="name" required minLength={2} autoComplete="name" placeholder="Como podemos te chamar?" />
+                      </label>
+                      <label>
+                        Telefone
+                        <input name="phone" required minLength={8} autoComplete="tel" placeholder="(00) 00000-0000" />
+                      </label>
+                      <label>
+                        E-mail <small style={{ display: "inline", color: "var(--suave)" }}>(opcional)</small>
+                        <input name="email" type="email" autoComplete="email" placeholder="para receber o lembrete" />
+                      </label>
+                    </>
+                  )}
+
+                  <button type="submit" className="botao-principal" disabled={enviando}>
+                    {enviando ? "Confirmando…" : "Confirmar agendamento"}
+                    {!enviando && <ArrowRight size={18} />}
+                  </button>
+                </form>
+              )}
+
+              {erro && <Aviso erro>{erro}</Aviso>}
+            </>
           )}
-          {mensagem && <Aviso>{mensagem}</Aviso>}
-          {erro && <Aviso erro>{erro}</Aviso>}
         </section>
       </main>
 
-      {selecionados.length > 0 && (
-        <aside className="resumo-flutuante">
-          <div>
+      {selecionados.length > 0 && !mensagem && (
+        <aside className="resumo-flutuante" aria-live="polite">
+          <div className="resumo-flutuante-info">
             <strong>{selecionados.length} serviço{selecionados.length > 1 ? "s" : ""}</strong>
             <small>{totalDuracao} min · {moeda(totalPreco)}</small>
           </div>
-          <span>{selecionados.map((s) => s.name).join(" · ")}</span>
+          {passo < 4 ? (
+            <a href="#agendar" className="resumo-flutuante-cta">
+              Continuar <ArrowRight size={16} />
+            </a>
+          ) : (
+            <span className="resumo-flutuante-cta" style={{ opacity: 0.7, pointerEvents: "none" }}>
+              Quase lá
+            </span>
+          )}
+          <span className="resumo-flutuante-nomes">{selecionados.map((s) => s.name).join(" · ")}</span>
         </aside>
       )}
     </div>
