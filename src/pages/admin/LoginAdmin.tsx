@@ -17,6 +17,7 @@ export function LoginAdmin({
   const [carregando, setCarregando] = useState(false);
   const tenantTema = useTenantTheme(slugFixo);
   const corMarca = tenantTema?.primaryColor ?? "var(--cor-marca)";
+  const ehDemo = slugFixo === "barbearia-demo";
 
   async function entrar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
@@ -78,11 +79,23 @@ export function LoginAdmin({
           </label>
           <label>
             E-mail
-            <input name="email" type="email" defaultValue="admin@demo.encaixe" required autoComplete="username" />
+            <input
+              name="email"
+              type="email"
+              defaultValue={ehDemo ? "admin@demo.encaixe" : ""}
+              required
+              autoComplete="username"
+            />
           </label>
           <label>
             Senha
-            <input name="password" type="password" defaultValue="Demo@1234" required autoComplete="current-password" />
+            <input
+              name="password"
+              type="password"
+              defaultValue={ehDemo ? "Demo@1234" : ""}
+              required
+              autoComplete="current-password"
+            />
           </label>
 
           <button className="botao-principal" disabled={carregando}>
