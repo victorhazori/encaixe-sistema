@@ -1,0 +1,147 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap");
+
+:root {
+  color: #e9ece8;
+  background: #111516;
+  font-family: "DM Sans", sans-serif;
+  font-synthesis: none;
+  --fundo: #111516;
+  --painel: #1a1f20;
+  --painel-claro: #222829;
+  --texto: #e9ece8;
+  --suave: #99a19d;
+  --borda: #303737;
+  --cor-marca: #d99442;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--fundo); }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+h1, h2, p { margin-top: 0; }
+h1, h2 { letter-spacing: -.04em; }
+label { display: grid; gap: .45rem; color: #bec4c0; font-size: .85rem; }
+input {
+  width: 100%; border: 1px solid var(--borda); border-radius: 10px; padding: .85rem 1rem;
+  background: #151a1b; color: var(--texto); outline: none;
+}
+select {
+  width: 100%; border: 1px solid var(--borda); border-radius: 10px; padding: .85rem 1rem;
+  background: #151a1b; color: var(--texto); outline: none;
+}
+input:focus { border-color: var(--cor-marca); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor-marca) 16%, transparent); }
+
+.marca { display: flex; align-items: center; gap: .7rem; font-size: 1.2rem; letter-spacing: -.03em; }
+.marca-simbolo {
+  width: 34px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 10px;
+  color: #17130c; background: var(--cor-marca); font-family: "Fraunces", serif; font-weight: 600;
+}
+.sobretitulo { display: flex; gap: .45rem; align-items: center; color: var(--cor-marca); text-transform: uppercase; letter-spacing: .13em; font-size: .72rem; font-weight: 700; }
+.link-sutil { background: none; border: 0; color: var(--suave); font-size: .88rem; }
+.aviso { padding: 1rem; border: 1px solid #44705e; background: #183025; border-radius: 10px; color: #bce4ce; }
+.aviso.erro { border-color: #70443e; background: #301d1b; color: #efbbb5; }
+.centro { min-height: 100vh; display: grid; place-content: center; gap: 2rem; padding: 1.2rem; justify-items: center; }
+.botao-principal {
+  display: flex; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 10px;
+  padding: .95rem 1.2rem; background: var(--cor-marca); color: #17130c; font-weight: 700;
+}
+
+.cabecalho-publico { max-width: 1180px; margin: auto; display: flex; justify-content: space-between; align-items: center; padding: 1.4rem; }
+.reserva { max-width: 1180px; margin: auto; display: grid; grid-template-columns: .85fr 1.15fr; gap: 5rem; padding: 5rem 1.4rem; }
+.apresentacao { position: sticky; top: 2rem; align-self: start; }
+.apresentacao h1 { font: 600 clamp(3.4rem, 7vw, 6rem)/.93 "Fraunces", serif; margin: 1.3rem 0 1.6rem; }
+.apresentacao h1 em { color: var(--cor-marca); font-style: italic; }
+.apresentacao > p { max-width: 34rem; color: var(--suave); font-size: 1.1rem; line-height: 1.65; }
+.estabelecimento { margin-top: 3rem; display: flex; align-items: center; gap: .9rem; }
+.estabelecimento small, .cartao-opcao small, .lista small { display: block; color: var(--suave); margin-top: .2rem; }
+.avatar-loja, .avatar {
+  flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: #303836; color: var(--cor-marca); font-weight: 700;
+}
+.avatar-loja { width: 48px; height: 48px; }
+.avatar { width: 38px; height: 38px; }
+.painel-reserva { background: var(--painel); border: 1px solid var(--borda); border-radius: 20px; padding: 2rem; }
+.passo { display: flex; align-items: center; gap: .8rem; margin: 2rem 0 1rem; }
+.passo:first-child { margin-top: 0; }
+.passo b { color: var(--cor-marca); font-size: .7rem; letter-spacing: .12em; }
+.passo span { font-weight: 600; }
+.grade-opcoes { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7rem; }
+.cartao-opcao {
+  min-height: 80px; display: flex; align-items: center; gap: .8rem; text-align: left; padding: 1rem;
+  color: var(--texto); background: #151a1b; border: 1px solid var(--borda); border-radius: 12px;
+}
+.cartao-opcao.ativo, .horarios button.ativo { border-color: var(--cor-marca); background: color-mix(in srgb, var(--cor-marca) 10%, #151a1b); }
+.horarios { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-top: 1rem; }
+.horarios button { border: 1px solid var(--borda); background: #151a1b; color: var(--texto); border-radius: 8px; padding: .65rem; }
+.horarios small { grid-column: 1 / -1; color: var(--suave); }
+.formulario { display: grid; gap: 1rem; margin-top: 1.5rem; }
+
+.login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr .9fr; }
+.login-marca { padding: 5vw; display: flex; flex-direction: column; justify-content: center; background: radial-gradient(circle at 20% 20%, #343024, #151a1b 58%); }
+.login-marca h1 { max-width: 650px; font: 600 clamp(3rem, 6vw, 6.7rem)/.95 "Fraunces", serif; margin: 4rem 0 1.5rem; }
+.login-marca p { color: var(--suave); font-size: 1.2rem; }
+.cartao-login { width: min(430px, calc(100% - 2rem)); margin: auto; display: grid; gap: 1.1rem; padding: 2rem; }
+.cartao-login h2, .cartao-login h1 { font: 600 2.5rem "Fraunces", serif; margin-bottom: .5rem; }
+
+.admin { min-height: 100vh; display: grid; grid-template-columns: 245px 1fr; }
+.admin aside { height: 100vh; position: sticky; top: 0; display: flex; flex-direction: column; padding: 1.5rem; border-right: 1px solid var(--borda); background: #141819; }
+.admin nav { display: grid; gap: .35rem; margin-top: 3rem; }
+.admin nav button, .sair {
+  display: flex; align-items: center; gap: .75rem; padding: .8rem; border: 0; border-radius: 9px; background: transparent; color: var(--suave); text-align: left;
+}
+.admin nav button.ativo { color: var(--texto); background: var(--painel-claro); }
+.sair { margin-top: auto; }
+.conteudo-admin { padding: 2rem clamp(1.2rem, 4vw, 4rem); overflow: hidden; }
+.conteudo-admin > header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem; }
+.conteudo-admin header small { color: var(--cor-marca); }
+.conteudo-admin header h1 { margin: .2rem 0 0; font: 600 2.7rem "Fraunces", serif; }
+.menu-mobile { display: none; background: none; border: 0; color: var(--texto); }
+.metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+.metricas article { position: relative; display: grid; gap: .8rem; padding: 1.5rem; border: 1px solid var(--borda); border-radius: 14px; background: var(--painel); }
+.metricas small { color: var(--suave); }
+.metricas strong { font-size: 2rem; }
+.metricas svg { position: absolute; top: 1.4rem; right: 1.4rem; color: var(--cor-marca); }
+.vazio { min-height: 240px; display: grid; place-content: center; justify-items: center; text-align: center; color: var(--suave); }
+.vazio svg { margin-bottom: 1rem; color: var(--cor-marca); }
+.lista { display: grid; gap: .65rem; }
+.lista article { display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid var(--borda); border-radius: 11px; background: var(--painel); }
+.lista article > div:nth-child(2) { flex: 1; }
+.lista time { min-width: 135px; color: var(--cor-marca); }
+.lista button, .form-inline button {
+  border: 1px solid var(--borda); border-radius: 8px; padding: .6rem .8rem; color: var(--texto); background: var(--painel-claro);
+}
+.status { border-radius: 99px; padding: .3rem .6rem; background: #23352d; color: #9ed0b5; font-size: .72rem; }
+.barra { display: flex; align-items: center; justify-content: space-between; }
+.form-inline { display: grid; grid-template-columns: 1.2fr 1.5fr .7fr .7fr auto; gap: .6rem; margin: 1rem 0 2rem; }
+.gerenciador .lista article > div:not(.avatar) { flex: 1; }
+.largura-media { max-width: 560px; }
+.nota { color: var(--suave); margin-top: 2rem; }
+.subsecao { margin-top: 4rem; }
+.form-agenda { grid-template-columns: 1.2fr .8fr 1fr 1fr auto; }
+.area-cliente { width: min(800px, calc(100% - 2rem)); margin: auto; padding: 2rem 0; }
+.area-cliente header { display: flex; justify-content: space-between; margin-bottom: 5rem; }
+.area-cliente header button { border: 0; background: none; color: var(--suave); }
+
+@media (max-width: 800px) {
+  .reserva, .login { grid-template-columns: 1fr; }
+  .reserva { gap: 2.5rem; padding-top: 2.5rem; }
+  .apresentacao { position: static; }
+  .apresentacao h1 { font-size: 3.6rem; }
+  .login-marca { min-height: 42vh; padding: 2rem; }
+  .login-marca h1 { margin: 2.5rem 0 1rem; font-size: 3rem; }
+  .cartao-login { padding: 2rem 0; }
+  .admin { grid-template-columns: 1fr; }
+  .admin aside { display: none; position: fixed; z-index: 10; width: 245px; }
+  .admin aside.aberto { display: flex; }
+  .menu-mobile { display: block; }
+  .metricas { grid-template-columns: 1fr; }
+  .form-inline { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 500px) {
+  .grade-opcoes { grid-template-columns: 1fr; }
+  .painel-reserva { padding: 1.2rem; }
+  .horarios { grid-template-columns: repeat(3, 1fr); }
+  .form-inline { grid-template-columns: 1fr; }
+  .lista article { align-items: flex-start; flex-wrap: wrap; }
+}

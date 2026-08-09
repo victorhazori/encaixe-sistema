@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: encaixe-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: encaixe
+      POSTGRES_USER: encaixe
+      POSTGRES_PASSWORD: encaixe_local
+    ports:
+      - "5432:5432"
+    volumes:
+      - encaixe_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U encaixe -d encaixe"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  encaixe_postgres:
