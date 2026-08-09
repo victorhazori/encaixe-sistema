@@ -11,15 +11,19 @@ PULAR_NGINX=false
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-for argumento in "$@"; do
-  case "$argumento" in
-    --skip-nginx) PULAR_NGINX=true ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-nginx) PULAR_NGINX=true; shift ;;
     --domain)
-      shift || true
-      DOMINIO="${1:-$DOMINIO}"
+      DOMINIO="${2:-}"
+      if [[ -z "$DOMINIO" ]]; then
+        echo "Use: --domain encaixe.victorhazori.com.br"
+        exit 1
+      fi
+      shift 2
       ;;
-    --domain=*) DOMINIO="${argumento#*=}" ;;
-    *) echo "Argumento desconhecido: $argumento"; exit 1 ;;
+    --domain=*) DOMINIO="${1#*=}"; shift ;;
+    *) echo "Argumento desconhecido: $1"; exit 1 ;;
   esac
 done
 
